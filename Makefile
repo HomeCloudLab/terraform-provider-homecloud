@@ -1,7 +1,12 @@
 .PHONY: test build
 
+BIN := terraform-provider-homecloud
+ifeq ($(OS),Windows_NT)
+BIN := terraform-provider-homecloud.exe
+endif
+
 test:
 	go test ./...
 
 build:
-	go build -o terraform-provider-homecloud .
+	go build -o $(BIN) .

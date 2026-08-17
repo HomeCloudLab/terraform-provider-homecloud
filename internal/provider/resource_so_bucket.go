@@ -54,9 +54,22 @@ func (r *soBucketResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 			"iam_arn": schema.StringAttribute{
 				Computed:            true,
 				MarkdownDescription: "IAM-canonical ARN (`arn:homecloud:so::{account_number}:bucket/{name}`).",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
-			"status":     schema.StringAttribute{Computed: true},
-			"created_at": schema.StringAttribute{Computed: true},
+			"status": schema.StringAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"created_at": schema.StringAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
 		},
 	}
 }

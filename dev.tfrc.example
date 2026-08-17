@@ -1,0 +1,21 @@
+# Local Terraform CLI config so `terraform init` uses the binary you just built.
+# The provider is not on the Terraform Registry yet (ADR-049 P6).
+#
+# Windows (PowerShell):
+#   go build -o terraform-provider-homecloud.exe .
+#   Copy this file to dev.tfrc and set the path below to this repo directory.
+#   $env:TF_CLI_CONFIG_FILE = "$PWD\dev.tfrc"
+#
+# Linux/macOS:
+#   go build -o terraform-provider-homecloud .
+#   export TF_CLI_CONFIG_FILE="$PWD/dev.tfrc"
+#
+# `terraform init` will error against the Registry. Skip it when using this file.
+# `terraform apply` / `plan` / `destroy` are enough.
+
+provider_installation {
+  dev_overrides {
+    "homecloudlab/homecloud" = "/absolute/path/to/terraform-provider-homecloud"
+  }
+  direct {}
+}

@@ -60,9 +60,22 @@ func (r *mqQueueResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			"iam_arn": schema.StringAttribute{
 				Computed:            true,
 				MarkdownDescription: "IAM-canonical ARN (`arn:homecloud:mq::{account_number}:queue/{name}`).",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
-			"status":    schema.StringAttribute{Computed: true},
-			"queue_url": schema.StringAttribute{Computed: true},
+			"status": schema.StringAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"queue_url": schema.StringAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"max_message_size": schema.Int64Attribute{
 				Optional: true,
 				Computed: true,

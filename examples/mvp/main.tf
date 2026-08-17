@@ -1,24 +1,31 @@
 terraform {
   required_providers {
     homecloud = {
-      source  = "homecloudlab/homecloud"
-      version = ">= 0.1.0"
+      source = "homecloudlab/homecloud"
     }
   }
 }
 
+# Credentials: HC_ACCESS_KEY_ID + HC_SECRET_ACCESS_KEY (user-bound Access Key).
+# Do not put secrets in this file. Override name_suffix if the default names exist.
 provider "homecloud" {
   apex = "holab.abrdns.com"
 }
 
-data "homecloud_account" "this" {}
-
-resource "homecloud_mq_queue" "jobs" {
-  name = "tf-jobs"
+variable "name_suffix" {
+  type        = string
+  default     = "demo"
+  description = "Suffix so queue/bucket names stay unique in the account."
 }
 
-resource "homecloud_so_bucket" "assets" {
-  name = "tf-assets"
+data "homecloud_account" "this" {}
+
+resource "homecloud_mq_queue" "demo" {
+  name = "tf-${var.name_suffix}-q"
+}
+
+resource "homecloud_so_bucket" "demo" {
+  name = "tf-${var.name_suffix}-b"
 }
 
 output "account_number" {
@@ -26,9 +33,9 @@ output "account_number" {
 }
 
 output "queue_arn" {
-  value = homecloud_mq_queue.jobs.iam_arn
+  value = homecloud_mq_queue.demo.iam_arn
 }
 
 output "bucket_arn" {
-  value = homecloud_so_bucket.assets.iam_arn
+  value = homecloud_so_bucket.demo.iam_arn
 }
