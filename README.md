@@ -1,7 +1,7 @@
 # terraform-provider-homecloud
 
 User-facing Terraform / OpenTofu provider for HomeCloud account resources.
-Talks to `console.{apex}/api/v1` with **SigV1 Access Keys** (ADR-048). It does **not**
+Talks to `console.{apex}/api/v1` with **SigV1 Access Keys** (ADR-049). It does **not**
 manage K3s, Helm, or data-plane bytes.
 
 ## P1 resources

@@ -39,7 +39,7 @@ func (p *homecloudProvider) Metadata(_ context.Context, _ provider.MetadataReque
 
 func (p *homecloudProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "HomeCloud Terraform provider. Talks to `console.{apex}/api/v1` with SigV1 Access Keys (ADR-048).",
+		MarkdownDescription: "HomeCloud Terraform provider. Talks to `console.{apex}/api/v1` with SigV1 Access Keys (ADR-049).",
 		Attributes: map[string]schema.Attribute{
 			"access_key": schema.StringAttribute{
 				Optional:            true,
