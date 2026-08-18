@@ -47,6 +47,17 @@ Create waits until `status=active` (or errors on `failed`). GET is by name or UU
 never on GET. Example: `examples/mdb`. Redis credentials stay in the
 `credentials_secret` HomeCloud secret, not in the Redis resource.
 
+## P4 Functions / IR / Domains
+
+| Resource | API |
+|----------|-----|
+| `homecloud_function` | `/api/v1/accounts/{id}/functions` |
+| `homecloud_function_url` | `.../functions/{name}/url/enable` |
+| `homecloud_ir_repository` | `/api/v1/accounts/{id}/registry/repositories` |
+| `homecloud_domain` | `/api/v1/accounts/{id}/domains` |
+
+`homecloud_function` is spec-only: no workspace files, deploys, or invoke. Function **delete** needs an owner/admin Access Key (`function.delete`). Create/update is developer. Example: `examples/p4`. Domain create stays `pending_verification` until you add the TXT record out of band. IR image tags are not Terraform resources.
+
 ## Configure
 
 ```hcl
@@ -90,6 +101,8 @@ terraform destroy -var="name_suffix=$env:USERNAME"
 
 IAM example (`examples/iam`) needs an **owner/admin** Access Key. Same `TF_CLI_CONFIG_FILE`; skip `terraform init`.
 
+P4 example (`examples/p4`) also needs owner/admin to **destroy** functions (`function.delete`). Skip `terraform init`.
+
 `terraform apply` warns that development overrides are in effect. That is expected.
 
 ## Develop
@@ -110,3 +123,4 @@ go test ./internal/provider -count=1 -timeout 20m
 
 IAM acc tests also need `HC_TF_ACC_IAM=1` and an owner/admin Access Key (`iam.manage`).
 MDB/Redis acc tests also need `HC_TF_ACC_MDB=1` (create waiters can take several minutes).
+Function / IR / domain acc tests also need `HC_TF_ACC_P4=1` (function delete needs owner/admin).

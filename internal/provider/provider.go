@@ -125,6 +125,10 @@ func (p *homecloudProvider) Resources(_ context.Context) []func() resource.Resou
 		NewMDBInstanceResource,
 		NewMDBUserResource,
 		NewRedisInstanceResource,
+		NewFunctionResource,
+		NewFunctionURLResource,
+		NewIRRepositoryResource,
+		NewDomainResource,
 	}
 }
 

@@ -253,3 +253,74 @@ func TestAccSecret(t *testing.T) {
 		},
 	})
 }
+
+func testAccP4Config(suffix string) string {
+	return fmt.Sprintf(`
+provider "homecloud" {}
+
+resource "homecloud_function" "demo" {
+  name    = "tfacc-%[1]s-fn"
+  handler = "main.handler"
+}
+
+resource "homecloud_function_url" "demo" {
+  function_name = homecloud_function.demo.name
+}
+
+resource "homecloud_ir_repository" "demo" {
+  name = "tfacc-%[1]s"
+}
+
+resource "homecloud_domain" "demo" {
+  hostname = "tfacc-%[1]s.example.com"
+}
+`, suffix)
+}
+
+func TestAccP4FunctionRegistryDomain(t *testing.T) {
+	testAccPreCheck(t)
+	if os.Getenv("HC_TF_ACC_P4") == "" {
+		t.Skip("set HC_TF_ACC_P4=1 to run function/IR/domain acceptance tests")
+	}
+	suffix := acctest.RandStringFromCharSet(8, acctest.CharSetAlphaNum)
+	fnName := "tfacc-" + suffix + "-fn"
+	repoName := "tfacc-" + suffix
+	hostname := "tfacc-" + suffix + ".example.com"
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccP4Config(suffix),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("homecloud_function.demo", "name", fnName),
+					resource.TestMatchResourceAttr(
+						"homecloud_function.demo",
+						"iam_arn",
+						regexp.MustCompile(`^arn:homecloud:functions::[0-9]+:function/`+regexp.QuoteMeta(fnName)+`$`),
+					),
+					resource.TestCheckResourceAttr("homecloud_function_url.demo", "function_name", fnName),
+					resource.TestCheckResourceAttrSet("homecloud_function_url.demo", "function_url"),
+					resource.TestCheckResourceAttr("homecloud_ir_repository.demo", "name", repoName),
+					resource.TestMatchResourceAttr(
+						"homecloud_ir_repository.demo",
+						"iam_arn",
+						regexp.MustCompile(`^arn:homecloud:ir::[0-9]+:repository/`+regexp.QuoteMeta(repoName)+`$`),
+					),
+					resource.TestCheckResourceAttr("homecloud_domain.demo", "hostname", hostname),
+					resource.TestCheckResourceAttr("homecloud_domain.demo", "status", "pending_verification"),
+					resource.TestMatchResourceAttr(
+						"homecloud_domain.demo",
+						"iam_arn",
+						regexp.MustCompile(`^arn:homecloud:domains::[0-9]+:domain/`+regexp.QuoteMeta(hostname)+`$`),
+					),
+				),
+			},
+			{
+				Config:             testAccP4Config(suffix),
+				PlanOnly:           true,
+				ExpectNonEmptyPlan: false,
+			},
+		},
+	})
+}

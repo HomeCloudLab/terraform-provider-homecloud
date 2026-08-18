@@ -799,6 +799,240 @@ func (c *Client) DeleteDatabaseUser(ctx context.Context, accountID, instanceRef,
 	return err
 }
 
+type Function struct {
+	ID                 string            `json:"id"`
+	Name               string            `json:"name"`
+	Status             string            `json:"status"`
+	Runtime            string            `json:"runtime"`
+	Handler            string            `json:"handler"`
+	MemoryLimitMB      int64             `json:"memory_limit_mb"`
+	TimeoutSeconds     int64             `json:"timeout_seconds"`
+	Environment        map[string]string `json:"environment"`
+	IamARN             string            `json:"iam_arn"`
+	InvokeURL          string            `json:"invoke_url"`
+	FunctionURL        string            `json:"function_url"`
+	FunctionURLEnabled bool              `json:"function_url_enabled"`
+	PublicURLEnabled   bool              `json:"public_url_enabled"`
+}
+
+type FunctionCreate struct {
+	Name           string            `json:"name"`
+	Runtime        string            `json:"runtime,omitempty"`
+	Handler        string            `json:"handler,omitempty"`
+	MemoryLimitMB  int64             `json:"memory_limit_mb,omitempty"`
+	TimeoutSeconds int64             `json:"timeout_seconds,omitempty"`
+	Environment    map[string]string `json:"environment,omitempty"`
+}
+
+type FunctionUpdate struct {
+	Runtime        string            `json:"runtime,omitempty"`
+	Handler        string            `json:"handler,omitempty"`
+	MemoryLimitMB  *int64            `json:"memory_limit_mb,omitempty"`
+	TimeoutSeconds *int64            `json:"timeout_seconds,omitempty"`
+	Environment    map[string]string `json:"environment,omitempty"`
+}
+
+type FunctionURL struct {
+	FunctionName       string `json:"function_name"`
+	FunctionURL        string `json:"function_url"`
+	FunctionURLEnabled bool   `json:"function_url_enabled"`
+	PublicURLEnabled   bool   `json:"public_url_enabled"`
+}
+
+type FunctionURLEnable struct {
+	PublicURLEnabled   bool  `json:"public_url_enabled"`
+	RateLimitPerMinute int64 `json:"rate_limit_per_minute,omitempty"`
+	MaxPayloadBytes    int64 `json:"max_payload_bytes,omitempty"`
+}
+
+type Repository struct {
+	ID             string   `json:"id"`
+	Name           string   `json:"name"`
+	Status         string   `json:"status"`
+	ZotNamespace   string   `json:"zot_namespace"`
+	KeepLast       *int64   `json:"keep_last"`
+	ProtectedTags  []string `json:"protected_tags"`
+	IamARN         string   `json:"iam_arn"`
+	ImageRefPrefix string   `json:"image_ref_prefix"`
+}
+
+type RepositoryCreate struct {
+	Name          string   `json:"name"`
+	KeepLast      *int64   `json:"keep_last,omitempty"`
+	ProtectedTags []string `json:"protected_tags,omitempty"`
+}
+
+type Domain struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	FQDN     string `json:"fqdn"`
+	Status   string `json:"status"`
+	DNSMode  string `json:"dns_mode"`
+	Verified bool   `json:"verified"`
+	IamARN   string `json:"iam_arn"`
+}
+
+type DomainCreate struct {
+	Hostname string `json:"hostname"`
+	DNSMode  string `json:"dns_mode,omitempty"`
+}
+
+func (c *Client) CreateFunction(ctx context.Context, accountID string, body FunctionCreate) (*Function, error) {
+	path := "/api/v1/accounts/" + accountID + "/functions"
+	raw, _, err := c.Do(ctx, http.MethodPost, path, accountID, idempotencyKey("function", accountID, body.Name), body)
+	if err != nil {
+		return nil, err
+	}
+	var out Function
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) GetFunction(ctx context.Context, accountID, name string) (*Function, error) {
+	path := "/api/v1/accounts/" + accountID + "/functions/" + iamPathRef(name)
+	raw, _, err := c.Do(ctx, http.MethodGet, path, accountID, "", nil)
+	if err != nil {
+		return nil, err
+	}
+	var out Function
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) UpdateFunction(ctx context.Context, accountID, name string, body FunctionUpdate) (*Function, error) {
+	path := "/api/v1/accounts/" + accountID + "/functions/" + iamPathRef(name)
+	raw, _, err := c.Do(ctx, http.MethodPatch, path, accountID, "", body)
+	if err != nil {
+		return nil, err
+	}
+	var out Function
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) DeleteFunction(ctx context.Context, accountID, name string) error {
+	path := "/api/v1/accounts/" + accountID + "/functions/" + iamPathRef(name)
+	_, _, err := c.Do(ctx, http.MethodDelete, path, accountID, "", nil)
+	if err != nil {
+		if apiErr, ok := err.(*APIError); ok && apiErr.NotFound() {
+			return nil
+		}
+	}
+	return err
+}
+
+func (c *Client) GetFunctionURL(ctx context.Context, accountID, name string) (*FunctionURL, error) {
+	path := "/api/v1/accounts/" + accountID + "/functions/" + iamPathRef(name) + "/url"
+	raw, _, err := c.Do(ctx, http.MethodGet, path, accountID, "", nil)
+	if err != nil {
+		return nil, err
+	}
+	var out FunctionURL
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) EnableFunctionURL(ctx context.Context, accountID, name string, body FunctionURLEnable) (*FunctionURL, error) {
+	path := "/api/v1/accounts/" + accountID + "/functions/" + iamPathRef(name) + "/url/enable"
+	raw, _, err := c.Do(ctx, http.MethodPost, path, accountID, "", body)
+	if err != nil {
+		return nil, err
+	}
+	var out FunctionURL
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) DisableFunctionURL(ctx context.Context, accountID, name string) error {
+	path := "/api/v1/accounts/" + accountID + "/functions/" + iamPathRef(name) + "/url/disable"
+	_, _, err := c.Do(ctx, http.MethodPost, path, accountID, "", nil)
+	return err
+}
+
+func (c *Client) CreateRepository(ctx context.Context, accountID string, body RepositoryCreate) (*Repository, error) {
+	path := "/api/v1/accounts/" + accountID + "/registry/repositories"
+	raw, _, err := c.Do(ctx, http.MethodPost, path, accountID, idempotencyKey("ir_repository", accountID, body.Name), body)
+	if err != nil {
+		return nil, err
+	}
+	var out Repository
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) GetRepository(ctx context.Context, accountID, name string) (*Repository, error) {
+	path := "/api/v1/accounts/" + accountID + "/registry/repositories/" + iamPathRef(name)
+	raw, _, err := c.Do(ctx, http.MethodGet, path, accountID, "", nil)
+	if err != nil {
+		return nil, err
+	}
+	var out Repository
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) DeleteRepository(ctx context.Context, accountID, name string) error {
+	path := "/api/v1/accounts/" + accountID + "/registry/repositories/" + iamPathRef(name)
+	_, _, err := c.Do(ctx, http.MethodDelete, path, accountID, "", nil)
+	if err != nil {
+		if apiErr, ok := err.(*APIError); ok && apiErr.NotFound() {
+			return nil
+		}
+	}
+	return err
+}
+
+func (c *Client) CreateDomain(ctx context.Context, accountID string, body DomainCreate) (*Domain, error) {
+	path := "/api/v1/accounts/" + accountID + "/domains"
+	raw, _, err := c.Do(ctx, http.MethodPost, path, accountID, idempotencyKey("domain", accountID, body.Hostname), body)
+	if err != nil {
+		return nil, err
+	}
+	var out Domain
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) GetDomain(ctx context.Context, accountID, ref string) (*Domain, error) {
+	path := "/api/v1/accounts/" + accountID + "/domains/" + iamPathRef(ref)
+	raw, _, err := c.Do(ctx, http.MethodGet, path, accountID, "", nil)
+	if err != nil {
+		return nil, err
+	}
+	var out Domain
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) DeleteDomain(ctx context.Context, accountID, ref string) error {
+	path := "/api/v1/accounts/" + accountID + "/domains/" + iamPathRef(ref)
+	_, _, err := c.Do(ctx, http.MethodDelete, path, accountID, "", nil)
+	if err != nil {
+		if apiErr, ok := err.(*APIError); ok && apiErr.NotFound() {
+			return nil
+		}
+	}
+	return err
+}
+
 func idempotencyKey(kind, accountID, name string) string {
 	return "terraform-" + kind + "-" + accountID + "-" + name
 }

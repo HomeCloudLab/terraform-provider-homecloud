@@ -312,3 +312,111 @@ func TestDeleteDatabaseNotFoundIsOk(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestCreateGetDeleteFunctionAndURL(t *testing.T) {
+	accountID := "11111111-1111-1111-1111-111111111111"
+	var gotIdem string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/api/v1/accounts/"+accountID+"/functions":
+			gotIdem = r.Header.Get("Idempotency-Key")
+			w.WriteHeader(http.StatusCreated)
+			_, _ = io.WriteString(w, `{"id":"fn-1","name":"hello","status":"active","runtime":"python3.12","handler":"main.handler","memory_limit_mb":128,"timeout_seconds":30,"iam_arn":"arn:homecloud:functions::1:function/hello","invoke_url":"https://fn.example/hello"}`)
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/hello"):
+			_, _ = io.WriteString(w, `{"id":"fn-1","name":"hello","status":"active","iam_arn":"arn:homecloud:functions::1:function/hello"}`)
+		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/url/enable"):
+			_, _ = io.WriteString(w, `{"function_name":"hello","function_url":"https://hello.func.example","function_url_enabled":true,"public_url_enabled":false}`)
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/url"):
+			_, _ = io.WriteString(w, `{"function_name":"hello","function_url":"https://hello.func.example","function_url_enabled":true}`)
+		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/url/disable"):
+			_, _ = io.WriteString(w, `{"function_url_enabled":false}`)
+		case r.Method == http.MethodDelete:
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Errorf("%s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer srv.Close()
+	c := &Client{Endpoint: srv.URL, AccessKeyID: "k", Secret: "s"}
+	created, err := c.CreateFunction(context.Background(), accountID, FunctionCreate{Name: "hello"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if created.IamARN != "arn:homecloud:functions::1:function/hello" {
+		t.Fatalf("%+v", created)
+	}
+	if gotIdem != "terraform-function-"+accountID+"-hello" {
+		t.Fatalf("idempotency %s", gotIdem)
+	}
+	if _, err := c.GetFunction(context.Background(), accountID, "hello"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.EnableFunctionURL(context.Background(), accountID, "hello", FunctionURLEnable{}); err != nil {
+		t.Fatal(err)
+	}
+	urlInfo, err := c.GetFunctionURL(context.Background(), accountID, "hello")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !urlInfo.FunctionURLEnabled {
+		t.Fatalf("%+v", urlInfo)
+	}
+	if err := c.DisableFunctionURL(context.Background(), accountID, "hello"); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.DeleteFunction(context.Background(), accountID, "hello"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCreateGetDeleteRepositoryAndDomain(t *testing.T) {
+	accountID := "11111111-1111-1111-1111-111111111111"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && strings.Contains(r.URL.Path, "/registry/repositories") && !strings.Contains(r.URL.Path, "frontend"):
+			w.WriteHeader(http.StatusCreated)
+			_, _ = io.WriteString(w, `{"id":"r1","name":"frontend","status":"active","iam_arn":"arn:homecloud:ir::1:repository/frontend","zot_namespace":"abc/frontend"}`)
+		case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/registry/repositories/frontend"):
+			_, _ = io.WriteString(w, `{"id":"r1","name":"frontend","status":"active","iam_arn":"arn:homecloud:ir::1:repository/frontend"}`)
+		case r.Method == http.MethodDelete && strings.Contains(r.URL.Path, "/registry/repositories/frontend"):
+			w.WriteHeader(http.StatusNoContent)
+		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/domains"):
+			w.WriteHeader(http.StatusCreated)
+			_, _ = io.WriteString(w, `{"id":"d1","name":"app.example.com","fqdn":"app.example.com","status":"pending_verification","dns_mode":"external","iam_arn":"arn:homecloud:domains::1:domain/app.example.com"}`)
+		case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/domains/"):
+			_, _ = io.WriteString(w, `{"id":"d1","name":"app.example.com","status":"pending_verification","iam_arn":"arn:homecloud:domains::1:domain/app.example.com"}`)
+		case r.Method == http.MethodDelete && strings.Contains(r.URL.Path, "/domains/"):
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Errorf("%s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer srv.Close()
+	c := &Client{Endpoint: srv.URL, AccessKeyID: "k", Secret: "s"}
+	repo, err := c.CreateRepository(context.Background(), accountID, RepositoryCreate{Name: "frontend"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if repo.IamARN != "arn:homecloud:ir::1:repository/frontend" {
+		t.Fatalf("%+v", repo)
+	}
+	if _, err := c.GetRepository(context.Background(), accountID, "frontend"); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.DeleteRepository(context.Background(), accountID, "frontend"); err != nil {
+		t.Fatal(err)
+	}
+	dom, err := c.CreateDomain(context.Background(), accountID, DomainCreate{Hostname: "app.example.com"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if dom.IamARN != "arn:homecloud:domains::1:domain/app.example.com" {
+		t.Fatalf("%+v", dom)
+	}
+	if _, err := c.GetDomain(context.Background(), accountID, "app.example.com"); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.DeleteDomain(context.Background(), accountID, "app.example.com"); err != nil {
+		t.Fatal(err)
+	}
+}
