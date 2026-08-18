@@ -7,8 +7,12 @@ manage K3s, Helm, or data-plane bytes.
 The provider is **not** on the Terraform Registry yet. Build it locally and use
 `dev_overrides` (see below). **User guide (all resources, examples, import):**
 [`docs/guides/getting-started.md`](docs/guides/getting-started.md) · Hebrew
-[`README.he.md`](README.he.md). Registry listing still needs a HashiCorp
-publisher + GPG — see [`PUBLISHING.md`](PUBLISHING.md).
+[`README.he.md`](README.he.md).
+
+Signed GitHub Release **v0.1.0** is up (GPG fingerprint
+`8A98220ACEEF8018FCEDCEBE4B8BCFED1A615BA9`). CI (`go test` / `go build`) and
+`release.yml` run on GitHub Actions. A live listing still needs a HashiCorp
+**Publish** click — see [`PUBLISHING.md`](PUBLISHING.md).
 
 Skip `terraform init` until the listing is live.
 
@@ -91,7 +95,13 @@ provider "homecloud" {
 
 Environment: `HC_ACCESS_KEY_ID`, `HC_SECRET_ACCESS_KEY`, `HC_APEX`, optional `HC_ACCOUNT_ID` / `HC_ENDPOINT`.
 
-GitHub Actions can skip long-lived keys: set `HC_ROLE_ARN` with `permissions: id-token: write`. See [examples/github-oidc](examples/github-oidc).
+GitHub Actions can skip long-lived keys: set `HC_ROLE_ARN` with
+`permissions: id-token: write`. The provider exchanges the JWT at
+`POST /api/v1/sts/assume-role-with-web-identity`. Trust must pin GitHub `sub`
+and `aud`. Assumed-role sessions match Service Account mapped routes
+(queue/bucket/secret); unmapped routes return `403 iam.management_role_not_enabled`.
+See [examples/github-oidc](examples/github-oidc). Optional env:
+`HC_WEB_IDENTITY_TOKEN`, `HC_OIDC_AUDIENCE`, `HC_SESSION_TOKEN`.
 
 Create a dedicated IAM user (`developer` or `admin`) and an Access Key bound to that user,
 or a Service Account key with IAM policies that allow the mapped actions (queue/bucket/secret

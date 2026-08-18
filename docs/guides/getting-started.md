@@ -8,8 +8,9 @@ This provider manages **account resources** on `console.{apex}/api/v1` with
 **SigV1 Access Keys**. It does **not** manage the homelab itself (K3s, Helm,
 Traefik, GitOps).
 
-The provider is **not on the Terraform Registry yet**. Build it from source and
-skip `terraform init` until it is listed (see [Install](#install)).
+The provider is **not on the Terraform Registry yet**. Signed GitHub Release
+**v0.1.0** already exists. Build from source and skip `terraform init` until
+HashiCorp **Publish** lists `homecloudlab/homecloud` (see [Install](#install)).
 
 Repo: [`terraform-provider-homecloud`](https://github.com/HomeCloudLab/terraform-provider-homecloud)
 (GitHub may show a rename hint; keep the `terraform-provider-*` name for Registry).
@@ -36,18 +37,56 @@ return `403 iam.management_sa_not_enabled`.
 
 ### GitHub OIDC (no long-lived key)
 
-Set `HC_ROLE_ARN` in GitHub Actions (`permissions: id-token: write`). The
-provider exchanges the OIDC JWT at `POST /api/v1/sts/assume-role-with-web-identity`
-and uses temporary SigV1 credentials. Trust must pin `sub` (repo) and `aud`
-(console URL). Assumed-role sessions match Service Account mapped routes
-(queue/bucket/secret). See [examples/github-oidc](../../examples/github-oidc).
+CI can mint a **temporary** Access Key from a GitHub Actions OIDC JWT. No
+`HC_SECRET_ACCESS_KEY` in repo secrets.
+
+1. Create an IAM role whose **trust** allows GitHub Actions (`Principal.Federated`
+   + `Condition` on `sub` and `aud`). Attach managed policies such as `MQAdmin`
+   / `SOBucketAdmin` / `SecretsAdmin`.
+2. In GitHub Actions, `permissions: id-token: write`.
+3. Set `HC_ROLE_ARN` (and optionally `HC_OIDC_AUDIENCE`, default
+   `https://console.{apex}`). The provider exchanges the JWT at
+   `POST /api/v1/sts/assume-role-with-web-identity` and uses the short-lived
+   SigV1 credentials (including `X-Homecloud-Session-Token`).
+
+Assumed-role sessions use IAM `authorize()` on the **same mapped routes as
+Service Account keys** (queue / bucket / secret Create/Delete/Get). Unmapped
+console routes return `403 iam.management_role_not_enabled`. IAM / MDB /
+functions / compute still need a User-bound key.
+
+Trust example (replace account number, repo, and audience):
+
+```json
+{
+  "Version": "2026-07-24",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {
+      "Federated": "arn:homecloud:iam::123456789012:oidc-provider/token.actions.githubusercontent.com"
+    },
+    "Action": "sts:AssumeRole",
+    "Condition": {
+      "StringEquals": {
+        "token.actions.githubusercontent.com:aud": "https://console.holab.abrdns.com"
+      },
+      "StringLike": {
+        "token.actions.githubusercontent.com:sub": "repo:HomeCloudLab/my-infra:*"
+      }
+    }
+  }]
+}
+```
+
+Copy a workflow skeleton from [examples/github-oidc](../../examples/github-oidc).
+In Actions the provider reads `ACTIONS_ID_TOKEN_REQUEST_URL` /
+`ACTIONS_ID_TOKEN_REQUEST_TOKEN` when `HC_WEB_IDENTITY_TOKEN` is unset.
 
 | Variable | Meaning |
 |----------|---------|
 | `HC_ROLE_ARN` | IAM role ARN to assume |
-| `HC_WEB_IDENTITY_TOKEN` | OIDC JWT (optional in Actions) |
+| `HC_WEB_IDENTITY_TOKEN` | OIDC JWT (optional in GitHub Actions; the provider can fetch it) |
 | `HC_OIDC_AUDIENCE` | JWT audience (default `https://console.{apex}`) |
-| `HC_SESSION_TOKEN` | Already-exchanged STS session token |
+| `HC_SESSION_TOKEN` | Already-exchanged STS session token (optional) |
 
 ---
 
@@ -358,13 +397,14 @@ The console stays fully writable. Drift is `terraform plan`, `import`, or
 | `examples/mdb` | PostgreSQL + user + Redis |
 | `examples/p4` | Function + URL + IR repo + domain |
 | `examples/p5` | SSH key + draft application (machine commented) |
+| `examples/github-oidc` | GitHub Actions OIDC trust + workflow skeleton |
 
 ---
 
 ## Registry listing
 
-Docs, `terraform-registry-manifest.json`, and GoReleaser live in the provider
-repo. A live listing on `registry.terraform.io` still needs a HashiCorp
-publisher for namespace `homecloudlab` and a GPG-signed GitHub Release. See
-[`PUBLISHING.md`](https://github.com/HomeCloudLab/terraform-provider-homecloud/blob/main/PUBLISHING.md)
-in the provider repo.
+Docs, `terraform-registry-manifest.json`, GoReleaser, and GitHub Actions (CI +
+signed `v*` releases) live in this repo. **v0.1.0** is already a GPG-signed
+GitHub Release (public key [`docs/signing-key.asc`](../signing-key.asc)). A live
+listing on `registry.terraform.io` still needs a HashiCorp **Publish** click for
+namespace `homecloudlab`. See [`PUBLISHING.md`](https://github.com/HomeCloudLab/terraform-provider-homecloud/blob/main/PUBLISHING.md).

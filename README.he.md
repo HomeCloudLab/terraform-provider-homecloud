@@ -6,8 +6,10 @@ English: [docs/guides/getting-started.md](docs/guides/getting-started.md).
 הספק מנהל **משאבי חשבון** ב-`console.{apex}/api/v1` עם **Access Keys ב-SigV1**.
 הוא **לא** מנהל את ה-homelab עצמו (K3s, Helm, Traefik, GitOps).
 
-הספק **עדיין לא ב-Terraform Registry**. בנו מקוד מקור ודלגו על `terraform init`
-עד שהרישום פעיל (ראו [התקנה](#התקנה)).
+הספק **עדיין לא ב-Terraform Registry**. GitHub Release חתום **v0.1.0** כבר קיים.
+בנו מקוד מקור ודלגו על `terraform init` עד שלחיצת **Publish** ב-HashiCorp תרשום
+את `homecloudlab/homecloud` (ראו [התקנה](#התקנה)). CI ו-`release.yml` רצים
+ב-GitHub Actions — ראו [`PUBLISHING.md`](PUBLISHING.md).
 
 ריפו: [`terraform-provider-homecloud`](https://github.com/HomeCloudLab/terraform-provider-homecloud)
 (GitHub עלול להציג רמז לשינוי שם; השאירו את הקידומת `terraform-provider-*` בשביל ה-Registry).
@@ -33,10 +35,43 @@ English: [docs/guides/getting-started.md](docs/guides/getting-started.md).
 
 ### GitHub OIDC (בלי מפתח ארוך-טווח)
 
-הגדירו `HC_ROLE_ARN` ב-GitHub Actions (`permissions: id-token: write`). הספק מחליף
-את ה-JWT ב-`POST /api/v1/sts/assume-role-with-web-identity`. ה-trust חייב לצמצם
-`sub` (ריפו) ו-`aud` (כתובת הקונסול). סשן assumed-role זהה לנתיבי Service Account
-הממופים (תור/באקט/סוד). ראו [examples/github-oidc](examples/github-oidc).
+ב-CI אפשר להנפיק Access Key **זמני** מ-JWT של GitHub Actions. אין צורך ב-
+`HC_SECRET_ACCESS_KEY` בסודות הריפו.
+
+1. צרו IAM role שה-**trust** שלו מתיר GitHub Actions (`Principal.Federated` +
+   `Condition` על `sub` ו-`aud`). צרפו מדיניות מנוהלת כמו `MQAdmin` /
+   `SOBucketAdmin` / `SecretsAdmin`.
+2. ב-GitHub Actions: `permissions: id-token: write`.
+3. הגדירו `HC_ROLE_ARN`. הספק מחליף את ה-JWT ב-
+   `POST /api/v1/sts/assume-role-with-web-identity` ומשתמש באישורי SigV1
+   קצרי-חיים (כולל `X-Homecloud-Session-Token`).
+
+סשן assumed-role זהה לנתיבי Service Account הממופים (תור/באקט/סוד). נתיבים
+שלא מופו מחזירים `403 iam.management_role_not_enabled`. IAM / MDB / פונקציות /
+מחשוב עדיין דורשים מפתח הקשור למשתמש.
+
+```json
+{
+  "Version": "2026-07-24",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {
+      "Federated": "arn:homecloud:iam::123456789012:oidc-provider/token.actions.githubusercontent.com"
+    },
+    "Action": "sts:AssumeRole",
+    "Condition": {
+      "StringEquals": {
+        "token.actions.githubusercontent.com:aud": "https://console.holab.abrdns.com"
+      },
+      "StringLike": {
+        "token.actions.githubusercontent.com:sub": "repo:HomeCloudLab/my-infra:*"
+      }
+    }
+  }]
+}
+```
+
+ראו [examples/github-oidc](examples/github-oidc).
 
 | משתנה | משמעות |
 |--------|--------|
@@ -352,12 +387,13 @@ resource "homecloud_application" "api" {
 | `examples/mdb` | PostgreSQL + משתמש + Redis |
 | `examples/p4` | פונקציה + URL + ריפו IR + דומיין |
 | `examples/p5` | מפתח SSH + אפליקציה draft (מכונה בהערה) |
+| `examples/github-oidc` | trust של GitHub Actions OIDC + שלד workflow |
 
 ---
 
 ## רישום ב-Registry
 
-תיעוד, `terraform-registry-manifest.json` ו-GoReleaser נמצאים בריפו הספק.
-רישום חי ב-`registry.terraform.io` עדיין דורש מפרסם HashiCorp ל-namespace
-`homecloudlab` ו-GitHub Release חתום ב-GPG. ראו
-[`PUBLISHING.md`](https://github.com/HomeCloudLab/terraform-provider-homecloud/blob/main/PUBLISHING.md).
+תיעוד, `terraform-registry-manifest.json`, GoReleaser ו-GitHub Actions (CI +
+שחרורים חתומים) נמצאים בריפו הזה. **v0.1.0** כבר GitHub Release חתום ב-GPG.
+רישום חי ב-`registry.terraform.io` עדיין דורש לחיצת **Publish** ב-HashiCorp
+ל-namespace `homecloudlab`. ראו [`PUBLISHING.md`](PUBLISHING.md).

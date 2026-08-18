@@ -17,8 +17,8 @@ https://github.com/HomeCloudLab/terraform-provider-homecloud/releases/tag/v0.1.0
 (`SHA256SUMS` + `SHA256SUMS.sig` + zips + manifest).
 
 GitHub Actions secrets already set on the repo: `GPG_PRIVATE_KEY`, `PASSPHRASE`.
-Later tags `v*` need `.github/workflows/release.yml` on `main` (pushing that
-file requires `gh auth refresh --scopes repo,workflow`).
+`.github/workflows/ci.yml` and `release.yml` are on `main`. Later tags `v*`
+reuse those workflows.
 
 ## Already in this repo
 

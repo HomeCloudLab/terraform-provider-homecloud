@@ -3,9 +3,10 @@
 Exchange a GitHub Actions OIDC JWT for short-lived HomeCloud SigV1 credentials.
 No long-lived `HC_SECRET_ACCESS_KEY` in GitHub Secrets.
 
-The sample workflow is **documentation** (`workflow.yml` in this folder). The
-provider repo cannot push `.github/workflows` without the GitHub `workflow`
-token scope.
+The sample workflow is **documentation** (`workflow.yml` in this folder). Copy
+it into **your** infra repo as `.github/workflows/terraform.yml`. The provider
+repo itself already has CI (`ci.yml`) and signed-release (`release.yml`)
+workflows; this folder is not that pipeline.
 
 ## 1. IAM role trust
 
