@@ -5,7 +5,12 @@ Talks to `console.{apex}/api/v1` with **SigV1 Access Keys** (ADR-049). It does *
 manage K3s, Helm, or data-plane bytes.
 
 The provider is **not** on the Terraform Registry yet. Build it locally and use
-`dev_overrides` (see below).
+`dev_overrides` (see below). Registry docs and GoReleaser layout are in this
+repo; listing still needs a HashiCorp publisher + GPG — see
+[`PUBLISHING.md`](PUBLISHING.md). Hebrew overview: [`README.he.md`](README.he.md).
+
+The console **Terraform** tab (copy-HCL) emits this source string plus
+`terraform import` comments. Skip `terraform init` until the listing is live.
 
 ## P1 / P1b / P2 resources
 

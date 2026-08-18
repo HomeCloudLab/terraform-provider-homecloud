@@ -1,4 +1,4 @@
-.PHONY: test build
+.PHONY: test build release-snapshot
 
 BIN := terraform-provider-homecloud
 ifeq ($(OS),Windows_NT)
@@ -10,3 +10,6 @@ test:
 
 build:
 	go build -o $(BIN) .
+
+release-snapshot:
+	goreleaser release --snapshot --clean --skip=sign
