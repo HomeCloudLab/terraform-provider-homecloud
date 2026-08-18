@@ -37,8 +37,9 @@ provider "homecloud" {
 
 Environment: `HC_ACCESS_KEY_ID`, `HC_SECRET_ACCESS_KEY`, `HC_APEX`, optional `HC_ACCOUNT_ID` / `HC_ENDPOINT`.
 
-Create a dedicated IAM user (`developer` or `admin`) and an Access Key bound to that user.
-Service Account keys are rejected on mutating console routes until P0b.
+Create a dedicated IAM user (`developer` or `admin`) and an Access Key bound to that user,
+or a Service Account key with IAM policies that allow the mapped actions (queue/bucket
+Create/Delete/Get). Unmapped console routes still return `403 iam.management_sa_not_enabled`.
 
 ## Local run (Windows)
 
