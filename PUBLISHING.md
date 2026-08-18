@@ -1,35 +1,45 @@
 # Publishing to the Terraform Registry
 
-The provider source string is already `homecloudlab/homecloud`
-(`registry.terraform.io/homecloudlab/homecloud`). Console copy-HCL uses that
-source. The listing is **not live** until the steps below are done.
+The provider source string is `homecloudlab/homecloud`
+(`registry.terraform.io/homecloudlab/homecloud`).
+
+GitHub repo (must stay this name — HashiCorp requires the prefix):
+https://github.com/HomeCloudLab/terraform-provider-homecloud
+
+The repo is **public**. CI and release workflows live in `.github/workflows/`.
+Releases are signed with the GPG key whose public half is
+[`docs/signing-key.asc`](docs/signing-key.asc).
+
+Fingerprint: `8A98220ACEEF8018FCEDCEBE4B8BCFED1A615BA9`
+
+GitHub Actions secrets already set on the repo: `GPG_PRIVATE_KEY`, `PASSPHRASE`.
+A tag `v*` (for example `v0.1.0`) runs GoReleaser and uploads zips +
+`SHA256SUMS` + `SHA256SUMS.sig` + the Registry manifest.
 
 ## Already in this repo
 
+- `LICENSE` — MPL-2.0 (OSI-approved; Registry requires a license)
 - `docs/` — Registry documentation (English)
 - `README.he.md` — Hebrew overview
 - `terraform-registry-manifest.json` — protocol 6.0
 - `.goreleaser.yml` — zip + SHA256SUMS + GPG-signed checksums
-- GitHub repo name `terraform-provider-homecloud` (required by HashiCorp)
+- `.github/workflows/ci.yml` and `release.yml`
 
-## Still needs a human (cannot be faked)
+## Last human step (cannot be done from this machine)
 
-1. **HashiCorp Terraform Registry** — sign in, claim namespace `homecloudlab`,
-   and publish this GitHub repository.
-2. **GPG key** — create a signing key, upload the public key to the Registry
-   publisher, and set `GPG_FINGERPRINT` when cutting a release.
-3. **GitHub Release** — tag `v0.1.0` (or later) and run GoReleaser so the
-   release includes `*_SHA256SUMS` + `*_SHA256SUMS.sig` + zips + manifest.
-4. **Optional CI** — a release workflow needs the GitHub `workflow` token
-   scope (`gh auth refresh --scopes repo,workflow`). Until then, run
-   GoReleaser locally:
+HashiCorp has no API that replaces the Registry website. Someone with access
+to the **HomeCloudLab** GitHub org (owner: David-Abravanel; repo admin is
+enough for the repo itself, but **org OAuth** for the Terraform Registry app
+usually needs an org owner) must:
 
-   ```bash
-   export GPG_FINGERPRINT=...
-   goreleaser release --clean
-   ```
+1. Open https://registry.terraform.io and **Sign in with GitHub**.
+2. Grant the Terraform Registry GitHub App access to the **HomeCloudLab**
+   organization if GitHub asks.
+3. **User Settings → Signing Keys** — paste [`docs/signing-key.asc`](docs/signing-key.asc)
+   onto the `homecloudlab` namespace.
+4. **Publish → Provider** — choose `HomeCloudLab/terraform-provider-homecloud`.
+5. Accept the Registry terms.
 
-Do not rename the GitHub repo away from `terraform-provider-homecloud`; the
-Registry requires that prefix.
+Do **not** rename the GitHub repo away from `terraform-provider-homecloud`.
 
-Until the listing is live, keep using `dev_overrides` and skip `terraform init`.
+Until that listing is live, keep using `dev_overrides` and skip `terraform init`.

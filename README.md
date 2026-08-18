@@ -144,3 +144,8 @@ IAM acc tests also need `HC_TF_ACC_IAM=1` and an owner/admin Access Key (`iam.ma
 MDB/Redis acc tests also need `HC_TF_ACC_MDB=1` (create waiters can take several minutes).
 Function / IR / domain acc tests also need `HC_TF_ACC_P4=1` (function delete needs owner/admin).
 SSH key / application acc tests also need `HC_TF_ACC_P5=1`. Compute machine acc tests also need `HC_TF_ACC_COMPUTE=1`.
+
+## License
+
+Mozilla Public License 2.0 — see [`LICENSE`](LICENSE).
+

@@ -1,3 +1,5 @@
+project_name: terraform-provider-homecloud
+
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 version: 2
 
@@ -43,6 +45,10 @@ signs:
   - artifacts: checksum
     args:
       - "--batch"
+      - "--pinentry-mode"
+      - "loopback"
+      - "--passphrase"
+      - "{{ .Env.PASSPHRASE }}"
       - "--local-user"
       - "{{ .Env.GPG_FINGERPRINT }}"
       - "--output"
@@ -54,7 +60,7 @@ release:
   extra_files:
     - glob: "terraform-registry-manifest.json"
       name_template: "{{ .ProjectName }}_{{ .Version }}_manifest.json"
-  draft: true
+  draft: false
 
 changelog:
   disable: true
