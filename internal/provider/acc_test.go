@@ -95,6 +95,76 @@ resource "homecloud_secret" "demo" {
 `, suffix)
 }
 
+func testAccIAMConfig(suffix string) string {
+	return fmt.Sprintf(`
+provider "homecloud" {}
+
+data "homecloud_account" "this" {}
+
+data "homecloud_iam_service_account" "functions" {
+  name = "functions"
+}
+
+resource "homecloud_iam_policy" "mq" {
+  name        = "tfacc-%[1]s-mq"
+  description = "acc"
+  document = jsonencode({
+    Version = "2026-07-24"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["mq:*"]
+      Resource = "arn:homecloud:mq::${data.homecloud_account.this.account_number}:queue/*"
+    }]
+  })
+}
+
+resource "homecloud_iam_role" "ci" {
+  name = "tfacc-%[1]s-ci"
+}
+
+resource "homecloud_iam_policy_attachment" "functions_mq" {
+  policy_arn     = homecloud_iam_policy.mq.arn
+  principal_type = "service_account"
+  principal_id   = data.homecloud_iam_service_account.functions.id
+}
+`, suffix)
+}
+
+func TestAccIAM(t *testing.T) {
+	testAccPreCheck(t)
+	if os.Getenv("HC_TF_ACC_IAM") == "" {
+		t.Skip("set HC_TF_ACC_IAM=1 with an owner/admin Access Key (iam.manage)")
+	}
+	suffix := acctest.RandStringFromCharSet(8, acctest.CharSetAlphaNum)
+	policyName := "tfacc-" + suffix + "-mq"
+	roleName := "tfacc-" + suffix + "-ci"
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccIAMConfig(suffix),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("homecloud_iam_policy.mq", "name", policyName),
+					resource.TestMatchResourceAttr(
+						"homecloud_iam_policy.mq",
+						"arn",
+						regexp.MustCompile(`^arn:homecloud:iam::[0-9]+:policy/`+regexp.QuoteMeta(policyName)+`$`),
+					),
+					resource.TestCheckResourceAttr("homecloud_iam_role.ci", "name", roleName),
+					resource.TestCheckResourceAttrSet("homecloud_iam_policy_attachment.functions_mq", "id"),
+					resource.TestCheckResourceAttrSet("data.homecloud_iam_service_account.functions", "id"),
+				),
+			},
+			{
+				Config:             testAccIAMConfig(suffix),
+				PlanOnly:           true,
+				ExpectNonEmptyPlan: false,
+			},
+		},
+	})
+}
+
 func TestAccSecret(t *testing.T) {
 	testAccPreCheck(t)
 	suffix := acctest.RandStringFromCharSet(8, acctest.CharSetAlphaNum)

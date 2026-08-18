@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -372,6 +373,215 @@ func (c *Client) DeleteSecret(ctx context.Context, accountID, name string) error
 		}
 	}
 	return err
+}
+
+type IAMPolicy struct {
+	ID             string          `json:"id"`
+	Name           string          `json:"name"`
+	ARN            string          `json:"arn"`
+	PolicyType     string          `json:"policy_type"`
+	DefaultVersion int             `json:"default_version"`
+	Description    *string         `json:"description"`
+	Document       json.RawMessage `json:"document"`
+	CreatedAt      *string         `json:"created_at"`
+}
+
+type IAMRole struct {
+	ID            string          `json:"id"`
+	Name          string          `json:"name"`
+	ARN           string          `json:"arn"`
+	Description   *string         `json:"description"`
+	TrustDocument json.RawMessage `json:"trust_document"`
+	RoleVersion   int             `json:"role_version"`
+	PolicyARNs    []string        `json:"policy_arns"`
+	CreatedAt     *string         `json:"created_at"`
+}
+
+type IAMServiceAccount struct {
+	ID          string  `json:"id"`
+	Name        string  `json:"name"`
+	ARN         string  `json:"arn"`
+	Description *string `json:"description"`
+}
+
+type IAMAttachment struct {
+	ID            string `json:"id"`
+	PolicyID      string `json:"policy_id"`
+	PolicyARN     string `json:"policy_arn"`
+	PrincipalType string `json:"principal_type"`
+	PrincipalID   string `json:"principal_id"`
+}
+
+func (c *Client) CreateIAMPolicy(ctx context.Context, accountID, name, description string, document json.RawMessage) (*IAMPolicy, error) {
+	path := "/api/v1/accounts/" + accountID + "/iam/policies"
+	body := struct {
+		Name        string          `json:"name"`
+		Description string          `json:"description,omitempty"`
+		Document    json.RawMessage `json:"document"`
+	}{Name: name, Description: description, Document: document}
+	raw, _, err := c.Do(ctx, http.MethodPost, path, accountID, "", body)
+	if err != nil {
+		return nil, err
+	}
+	var out IAMPolicy
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func iamPathRef(ref string) string {
+	return url.PathEscape(strings.TrimSpace(ref))
+}
+
+func (c *Client) GetIAMPolicy(ctx context.Context, accountID, ref string) (*IAMPolicy, error) {
+	path := "/api/v1/accounts/" + accountID + "/iam/policies/" + iamPathRef(ref)
+	raw, _, err := c.Do(ctx, http.MethodGet, path, accountID, "", nil)
+	if err != nil {
+		return nil, err
+	}
+	var out IAMPolicy
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) PutIAMPolicyDocument(ctx context.Context, accountID, ref string, document json.RawMessage) (*IAMPolicy, error) {
+	path := "/api/v1/accounts/" + accountID + "/iam/policies/" + iamPathRef(ref) + "/versions"
+	raw, _, err := c.Do(ctx, http.MethodPost, path, accountID, "", struct {
+		Document     json.RawMessage `json:"document"`
+		SetAsDefault bool            `json:"set_as_default"`
+	}{Document: document, SetAsDefault: true})
+	if err != nil {
+		return nil, err
+	}
+	var out IAMPolicy
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) DeleteIAMPolicy(ctx context.Context, accountID, ref string) error {
+	path := "/api/v1/accounts/" + accountID + "/iam/policies/" + iamPathRef(ref)
+	_, _, err := c.Do(ctx, http.MethodDelete, path, accountID, "", nil)
+	if err != nil {
+		if apiErr, ok := err.(*APIError); ok && apiErr.NotFound() {
+			return nil
+		}
+	}
+	return err
+}
+
+func (c *Client) CreateIAMRole(ctx context.Context, accountID, name, description string, trust json.RawMessage) (*IAMRole, error) {
+	path := "/api/v1/accounts/" + accountID + "/iam/roles"
+	body := struct {
+		Name          string          `json:"name"`
+		Description   string          `json:"description,omitempty"`
+		TrustDocument json.RawMessage `json:"trust_document,omitempty"`
+	}{Name: name, Description: description, TrustDocument: trust}
+	raw, _, err := c.Do(ctx, http.MethodPost, path, accountID, "", body)
+	if err != nil {
+		return nil, err
+	}
+	var out IAMRole
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) GetIAMRole(ctx context.Context, accountID, ref string) (*IAMRole, error) {
+	path := "/api/v1/accounts/" + accountID + "/iam/roles/" + iamPathRef(ref)
+	raw, _, err := c.Do(ctx, http.MethodGet, path, accountID, "", nil)
+	if err != nil {
+		return nil, err
+	}
+	var out IAMRole
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) UpdateIAMRoleTrust(ctx context.Context, accountID, ref string, trust json.RawMessage) (*IAMRole, error) {
+	path := "/api/v1/accounts/" + accountID + "/iam/roles/" + iamPathRef(ref) + "/trust"
+	raw, _, err := c.Do(ctx, http.MethodPut, path, accountID, "", struct {
+		TrustDocument json.RawMessage `json:"trust_document"`
+	}{TrustDocument: trust})
+	if err != nil {
+		return nil, err
+	}
+	var out IAMRole
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) DeleteIAMRole(ctx context.Context, accountID, ref string) error {
+	path := "/api/v1/accounts/" + accountID + "/iam/roles/" + iamPathRef(ref)
+	_, _, err := c.Do(ctx, http.MethodDelete, path, accountID, "", nil)
+	if err != nil {
+		if apiErr, ok := err.(*APIError); ok && apiErr.NotFound() {
+			return nil
+		}
+	}
+	return err
+}
+
+func (c *Client) GetIAMServiceAccount(ctx context.Context, accountID, ref string) (*IAMServiceAccount, error) {
+	path := "/api/v1/accounts/" + accountID + "/iam/service-accounts/" + iamPathRef(ref)
+	raw, _, err := c.Do(ctx, http.MethodGet, path, accountID, "", nil)
+	if err != nil {
+		return nil, err
+	}
+	var out IAMServiceAccount
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) AttachIAMPolicy(ctx context.Context, accountID, policyARN, principalType, principalID string) error {
+	path := "/api/v1/accounts/" + accountID + "/iam/principals/attachments"
+	_, _, err := c.Do(ctx, http.MethodPost, path, accountID, "", map[string]string{
+		"policy_arn":     policyARN,
+		"principal_type": principalType,
+		"principal_id":   principalID,
+	})
+	return err
+}
+
+func (c *Client) DetachIAMPolicy(ctx context.Context, accountID, policyARN, principalType, principalID string) error {
+	path := "/api/v1/accounts/" + accountID + "/iam/principals/attachments"
+	_, _, err := c.Do(ctx, http.MethodDelete, path, accountID, "", map[string]string{
+		"policy_arn":     policyARN,
+		"principal_type": principalType,
+		"principal_id":   principalID,
+	})
+	if err != nil {
+		if apiErr, ok := err.(*APIError); ok && apiErr.NotFound() {
+			return nil
+		}
+	}
+	return err
+}
+
+func (c *Client) ListIAMAttachments(ctx context.Context, accountID, principalType, principalID string) ([]IAMAttachment, error) {
+	path := "/api/v1/accounts/" + accountID + "/iam/principals/" + iamPathRef(principalType) + "/" + iamPathRef(principalID) + "/attachments"
+	raw, _, err := c.Do(ctx, http.MethodGet, path, accountID, "", nil)
+	if err != nil {
+		return nil, err
+	}
+	var out struct {
+		Items []IAMAttachment `json:"items"`
+	}
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return out.Items, nil
 }
 
 func idempotencyKey(kind, accountID, name string) string {

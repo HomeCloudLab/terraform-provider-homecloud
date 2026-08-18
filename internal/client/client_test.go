@@ -97,3 +97,25 @@ func TestAPIErrorEnvelope(t *testing.T) {
 		t.Fatalf("%+v", apiErr)
 	}
 }
+
+func TestCreateIAMPolicyMarshalsDocumentObject(t *testing.T) {
+	var gotBody []byte
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotBody, _ = io.ReadAll(r.Body)
+		w.WriteHeader(http.StatusCreated)
+		_, _ = io.WriteString(w, `{"id":"p1","name":"tf-mq","arn":"arn:homecloud:iam::1:policy/tf-mq","document":{"Version":"2026-07-24"}}`)
+	}))
+	defer srv.Close()
+	c := &Client{Endpoint: srv.URL, AccessKeyID: "k", Secret: "s"}
+	doc := json.RawMessage(`{"Version":"2026-07-24","Statement":[{"Effect":"Allow","Action":"mq:*","Resource":"*"}]}`)
+	if _, err := c.CreateIAMPolicy(context.Background(), "acc", "tf-mq", "demo", doc); err != nil {
+		t.Fatal(err)
+	}
+	var parsed map[string]any
+	if err := json.Unmarshal(gotBody, &parsed); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := parsed["document"].(map[string]any); !ok {
+		t.Fatalf("document should be a JSON object, got %T %s", parsed["document"], gotBody)
+	}
+}

@@ -119,11 +119,15 @@ func (p *homecloudProvider) Resources(_ context.Context) []func() resource.Resou
 		NewMQQueueResource,
 		NewSOBucketResource,
 		NewSecretResource,
+		NewIAMPolicyResource,
+		NewIAMRoleResource,
+		NewIAMPolicyAttachmentResource,
 	}
 }
 
 func (p *homecloudProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		NewAccountDataSource,
+		NewIAMServiceAccountDataSource,
 	}
 }
