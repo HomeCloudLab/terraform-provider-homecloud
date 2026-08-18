@@ -15,12 +15,13 @@ import (
 )
 
 type Client struct {
-	Endpoint    string
-	AccessKeyID string
-	Secret      string
-	AccountID   string
-	HTTP        *http.Client
-	Now         func() time.Time
+	Endpoint     string
+	AccessKeyID  string
+	Secret       string
+	SessionToken string
+	AccountID    string
+	HTTP         *http.Client
+	Now          func() time.Time
 }
 
 type APIError struct {
@@ -148,6 +149,9 @@ func (c *Client) Do(ctx context.Context, method, path, accountID, idempotencyKey
 	}
 	for k, v := range sigv1.SignHeaders(c.AccessKeyID, c.Secret, method, path, accountID, c.now()) {
 		req.Header.Set(k, v)
+	}
+	if strings.TrimSpace(c.SessionToken) != "" {
+		req.Header.Set(sigv1.HeaderSessionToken, c.SessionToken)
 	}
 	resp, err := c.httpClient().Do(req)
 	if err != nil {

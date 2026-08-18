@@ -40,8 +40,12 @@ resource "homecloud_mq_queue" "jobs" {
 Set `HC_ACCESS_KEY_ID` and `HC_SECRET_ACCESS_KEY` (User-bound Access Key).
 Do not put secrets in `.tf` files. Optional: `HC_APEX`, `HC_ACCOUNT_ID`, `HC_ENDPOINT`.
 
+GitHub Actions: `HC_ROLE_ARN` + `permissions: id-token: write` (OIDC → temporary
+SigV1). See `examples/github-oidc`. Optional: `HC_OIDC_AUDIENCE`, `HC_SESSION_TOKEN`.
+
 IAM mutations need a console role of **owner or admin**. Unmapped Service Account
-console routes return `403 iam.management_sa_not_enabled`.
+console routes return `403 iam.management_sa_not_enabled`. Unmapped assumed-role
+sessions return `403 iam.management_role_not_enabled`.
 
 ## Schema
 
@@ -52,3 +56,7 @@ console routes return `403 iam.management_sa_not_enabled`.
 - `apex` (String) Platform apex. Default `holab.abrdns.com`. Env: `HC_APEX`.
 - `endpoint` (String) Override console base URL (tests). Env: `HC_ENDPOINT`.
 - `account_id` (String) Account UUID. Default from Access Key whoami. Env: `HC_ACCOUNT_ID`.
+- `role_arn` (String) IAM role ARN for GitHub OIDC. Env: `HC_ROLE_ARN`.
+- `web_identity_token` (String, Sensitive) GitHub OIDC JWT. Env: `HC_WEB_IDENTITY_TOKEN`.
+- `oidc_audience` (String) Audience for the GitHub OIDC token. Default `https://console.{apex}`. Env: `HC_OIDC_AUDIENCE`.
+- `session_token` (String, Sensitive) STS session token. Env: `HC_SESSION_TOKEN`.

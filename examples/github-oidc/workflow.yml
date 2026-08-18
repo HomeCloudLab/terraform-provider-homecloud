@@ -1,0 +1,25 @@
+# Copy this file to YOUR infra repo as .github/workflows/terraform.yml
+# (not pushed to terraform-provider-homecloud — GitHub workflow scope).
+name: terraform
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  id-token: write
+  contents: read
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    env:
+      HC_APEX: holab.abrdns.com
+      HC_ROLE_ARN: ${{ vars.HC_ROLE_ARN }}
+      HC_OIDC_AUDIENCE: https://console.holab.abrdns.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - name: terraform plan
+        run: terraform plan
+        # Until the Registry listing ships, build the provider and use dev_overrides.
+        # The provider Configure() fetches the GitHub OIDC JWT and calls
+        # POST /api/v1/sts/assume-role-with-web-identity.

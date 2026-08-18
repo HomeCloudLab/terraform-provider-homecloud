@@ -31,6 +31,20 @@ English: [docs/guides/getting-started.md](docs/guides/getting-started.md).
 דורשת owner/admin. יצירה/מחיקה/קריאה של תור/באקט/סוד יכולות עם מפתח Service Account
 ופעולות IAM מתאימות. נתיבי קונסול שלא מופו ל-SA מחזירים `403 iam.management_sa_not_enabled`.
 
+### GitHub OIDC (בלי מפתח ארוך-טווח)
+
+הגדירו `HC_ROLE_ARN` ב-GitHub Actions (`permissions: id-token: write`). הספק מחליף
+את ה-JWT ב-`POST /api/v1/sts/assume-role-with-web-identity`. ה-trust חייב לצמצם
+`sub` (ריפו) ו-`aud` (כתובת הקונסול). סשן assumed-role זהה לנתיבי Service Account
+הממופים (תור/באקט/סוד). ראו [examples/github-oidc](examples/github-oidc).
+
+| משתנה | משמעות |
+|--------|--------|
+| `HC_ROLE_ARN` | ARN של ה-Role להנחה |
+| `HC_WEB_IDENTITY_TOKEN` | JWT של OIDC (אופציונלי ב-Actions) |
+| `HC_OIDC_AUDIENCE` | ה-audience של ה-JWT (ברירת מחדל `https://console.{apex}`) |
+| `HC_SESSION_TOKEN` | טוקן STS שכבר הוחלף |
+
 ---
 
 ## התקנה (מקומית, עד ה-Registry)

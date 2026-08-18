@@ -34,6 +34,21 @@ IAM create/update/delete needs a console role of **owner or admin**. Function
 a Service Account key with the matching IAM actions. Unmapped SA console routes
 return `403 iam.management_sa_not_enabled`.
 
+### GitHub OIDC (no long-lived key)
+
+Set `HC_ROLE_ARN` in GitHub Actions (`permissions: id-token: write`). The
+provider exchanges the OIDC JWT at `POST /api/v1/sts/assume-role-with-web-identity`
+and uses temporary SigV1 credentials. Trust must pin `sub` (repo) and `aud`
+(console URL). Assumed-role sessions match Service Account mapped routes
+(queue/bucket/secret). See [examples/github-oidc](../../examples/github-oidc).
+
+| Variable | Meaning |
+|----------|---------|
+| `HC_ROLE_ARN` | IAM role ARN to assume |
+| `HC_WEB_IDENTITY_TOKEN` | OIDC JWT (optional in Actions) |
+| `HC_OIDC_AUDIENCE` | JWT audience (default `https://console.{apex}`) |
+| `HC_SESSION_TOKEN` | Already-exchanged STS session token |
+
 ---
 
 ## Install (local, until Registry)

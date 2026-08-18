@@ -518,3 +518,59 @@ func TestCreateGetDeleteMachineSSHKeyAndApplication(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestAssumeRoleWithWebIdentityUnsigned(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v1/sts/assume-role-with-web-identity" {
+			t.Errorf("path %s", r.URL.Path)
+		}
+		if r.Header.Get(sigv1.HeaderSignature) != "" {
+			t.Error("OIDC exchange must not SigV1-sign")
+		}
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		if body["role_arn"] != "arn:homecloud:iam::1:role/github-ci" {
+			t.Errorf("role_arn %+v", body["role_arn"])
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"role_arn":          body["role_arn"],
+			"assumed_role_id":   "role-1",
+			"session_name":      "terraform",
+			"federated_sub":     "repo:HomeCloudLab/infra:ref:refs/heads/main",
+			"account_id":        "11111111-1111-1111-1111-111111111111",
+			"access_key_id":     "HCSTTEST",
+			"secret_access_key": "tmp-secret",
+			"session_token":     "tmp-session",
+			"expires_at":        "2026-08-18T18:00:00+00:00",
+		})
+	}))
+	defer srv.Close()
+	c := &Client{Endpoint: srv.URL}
+	out, err := c.AssumeRoleWithWebIdentity(context.Background(), AssumeRoleWithWebIdentityInput{
+		RoleARN:          "arn:homecloud:iam::1:role/github-ci",
+		WebIdentityToken: "header.payload.sig",
+		SessionName:      "terraform",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.AccessKeyID != "HCSTTEST" || out.SessionToken != "tmp-session" {
+		t.Fatalf("%+v", out)
+	}
+}
+
+func TestDoSendsSessionToken(t *testing.T) {
+	var got string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = r.Header.Get(sigv1.HeaderSessionToken)
+		_ = json.NewEncoder(w).Encode(map[string]string{"account_id": "acc-1"})
+	}))
+	defer srv.Close()
+	c := &Client{Endpoint: srv.URL, AccessKeyID: "k", Secret: "s", SessionToken: "sess"}
+	if _, err := c.Whoami(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if got != "sess" {
+		t.Fatalf("session token header %q", got)
+	}
+}

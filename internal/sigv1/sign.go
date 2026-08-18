@@ -13,10 +13,11 @@ import (
 )
 
 const (
-	HeaderAccessKeyID = "X-Homecloud-Access-Key-Id"
-	HeaderDate        = "X-Homecloud-Date"
-	HeaderSignature   = "X-Homecloud-Signature"
-	WhoamiAccountID   = "-"
+	HeaderAccessKeyID   = "X-Homecloud-Access-Key-Id"
+	HeaderDate          = "X-Homecloud-Date"
+	HeaderSignature     = "X-Homecloud-Signature"
+	HeaderSessionToken  = "X-Homecloud-Session-Token"
+	WhoamiAccountID     = "-"
 )
 
 func BuildStringToSign(method, path, timestamp, accountID string) string {

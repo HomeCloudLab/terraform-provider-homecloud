@@ -91,9 +91,11 @@ provider "homecloud" {
 
 Environment: `HC_ACCESS_KEY_ID`, `HC_SECRET_ACCESS_KEY`, `HC_APEX`, optional `HC_ACCOUNT_ID` / `HC_ENDPOINT`.
 
+GitHub Actions can skip long-lived keys: set `HC_ROLE_ARN` with `permissions: id-token: write`. See [examples/github-oidc](examples/github-oidc).
+
 Create a dedicated IAM user (`developer` or `admin`) and an Access Key bound to that user,
 or a Service Account key with IAM policies that allow the mapped actions (queue/bucket/secret
-Create/Delete/Get, plus `secrets:PutSecretValue` to set values). Unmapped console routes still return `403 iam.management_sa_not_enabled`.
+Create/Delete/Get, plus `secrets:PutSecretValue` to set values). Unmapped console routes still return `403 iam.management_sa_not_enabled`. Assumed-role OIDC sessions use the same mapped surface (`403 iam.management_role_not_enabled` elsewhere).
 
 ## Local run (Windows)
 
