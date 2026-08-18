@@ -165,6 +165,66 @@ func TestAccIAM(t *testing.T) {
 	})
 }
 
+func testAccMDBConfig(suffix string) string {
+	return fmt.Sprintf(`
+provider "homecloud" {}
+
+resource "homecloud_mdb_instance" "app" {
+  name           = "tfacc-%[1]s-pg"
+  engine         = "postgresql"
+  instance_class = "micro"
+}
+
+resource "homecloud_mdb_user" "ci" {
+  instance_name = homecloud_mdb_instance.app.name
+  username      = "ci"
+  password      = "ChangeMe22"
+  role          = "readwrite"
+}
+
+resource "homecloud_redis_instance" "cache" {
+  name           = "tfacc-%[1]s-redis"
+  instance_class = "micro"
+}
+`, suffix)
+}
+
+func TestAccMDBRedis(t *testing.T) {
+	testAccPreCheck(t)
+	if os.Getenv("HC_TF_ACC_MDB") == "" {
+		t.Skip("set HC_TF_ACC_MDB=1 to run MDB/Redis acceptance tests (waiters can take several minutes)")
+	}
+	suffix := acctest.RandStringFromCharSet(8, acctest.CharSetAlphaNum)
+	dbName := "tfacc-" + suffix + "-pg"
+	cacheName := "tfacc-" + suffix + "-redis"
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccMDBConfig(suffix),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("homecloud_mdb_instance.app", "name", dbName),
+					resource.TestCheckResourceAttr("homecloud_mdb_instance.app", "status", "active"),
+					resource.TestMatchResourceAttr(
+						"homecloud_mdb_instance.app",
+						"iam_arn",
+						regexp.MustCompile(`^arn:homecloud:mdb::[0-9]+:instance/`+regexp.QuoteMeta(dbName)+`$`),
+					),
+					resource.TestCheckResourceAttr("homecloud_mdb_user.ci", "username", "ci"),
+					resource.TestCheckResourceAttr("homecloud_redis_instance.cache", "name", cacheName),
+					resource.TestCheckResourceAttr("homecloud_redis_instance.cache", "status", "active"),
+				),
+			},
+			{
+				Config:             testAccMDBConfig(suffix),
+				PlanOnly:           true,
+				ExpectNonEmptyPlan: false,
+			},
+		},
+	})
+}
+
 func TestAccSecret(t *testing.T) {
 	testAccPreCheck(t)
 	suffix := acctest.RandStringFromCharSet(8, acctest.CharSetAlphaNum)

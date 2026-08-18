@@ -122,6 +122,9 @@ func (p *homecloudProvider) Resources(_ context.Context) []func() resource.Resou
 		NewIAMPolicyResource,
 		NewIAMRoleResource,
 		NewIAMPolicyAttachmentResource,
+		NewMDBInstanceResource,
+		NewMDBUserResource,
+		NewRedisInstanceResource,
 	}
 }
 

@@ -584,6 +584,221 @@ func (c *Client) ListIAMAttachments(ctx context.Context, accountID, principalTyp
 	return out.Items, nil
 }
 
+type MDBConnection struct {
+	Endpoint         string `json:"endpoint"`
+	InternalEndpoint string `json:"internal_endpoint"`
+	Port             int64  `json:"port"`
+	Database         string `json:"database"`
+	Username         string `json:"username"`
+}
+
+type Database struct {
+	ID            string        `json:"id"`
+	Name          string        `json:"name"`
+	Status        string        `json:"status"`
+	Engine        string        `json:"engine"`
+	InstanceClass string        `json:"instance_class"`
+	EngineVersion string        `json:"engine_version"`
+	StorageGi     *int64        `json:"storage_gi"`
+	IamARN        string        `json:"iam_arn"`
+	Phase         string        `json:"phase"`
+	Connection    MDBConnection `json:"connection"`
+}
+
+type DatabaseCreate struct {
+	Name          string `json:"name"`
+	Engine        string `json:"engine"`
+	InstanceClass string `json:"instance_class,omitempty"`
+	EngineVersion string `json:"engine_version,omitempty"`
+	StorageGi     *int64 `json:"storage_gi,omitempty"`
+	Database      string `json:"database,omitempty"`
+	Owner         string `json:"owner,omitempty"`
+}
+
+type CacheConnection struct {
+	Endpoint          string `json:"endpoint"`
+	InternalEndpoint  string `json:"internal_endpoint"`
+	Port              int64  `json:"port"`
+	CredentialsSecret string `json:"credentials_secret"`
+}
+
+type Cache struct {
+	ID            string          `json:"id"`
+	Name          string          `json:"name"`
+	Status        string          `json:"status"`
+	InstanceClass string          `json:"instance_class"`
+	RedisVersion  string          `json:"redis_version"`
+	IamARN        string          `json:"iam_arn"`
+	Phase         string          `json:"phase"`
+	Connection    CacheConnection `json:"connection"`
+}
+
+type CacheCreate struct {
+	Name          string `json:"name"`
+	InstanceClass string `json:"instance_class,omitempty"`
+	RedisVersion  string `json:"redis_version,omitempty"`
+}
+
+type DatabaseUser struct {
+	Username string `json:"username"`
+	Role     string `json:"role"`
+	Phase    string `json:"phase"`
+}
+
+func (c *Client) WaitUntilActive(ctx context.Context, getStatus func() (string, error), timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	for {
+		status, err := getStatus()
+		if err != nil {
+			return err
+		}
+		switch status {
+		case "active":
+			return nil
+		case "failed":
+			return fmt.Errorf("resource entered failed status")
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("timeout waiting for active (last status %s)", status)
+		}
+		timer := time.NewTimer(5 * time.Second)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return ctx.Err()
+		case <-timer.C:
+		}
+	}
+}
+
+func (c *Client) CreateDatabase(ctx context.Context, accountID string, body DatabaseCreate) (*Database, error) {
+	path := "/api/v1/accounts/" + accountID + "/databases"
+	raw, _, err := c.Do(ctx, http.MethodPost, path, accountID, idempotencyKey("mdb_instance", accountID, body.Name), body)
+	if err != nil {
+		return nil, err
+	}
+	var out Database
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) GetDatabase(ctx context.Context, accountID, ref string) (*Database, error) {
+	path := "/api/v1/accounts/" + accountID + "/databases/" + iamPathRef(ref)
+	raw, _, err := c.Do(ctx, http.MethodGet, path, accountID, "", nil)
+	if err != nil {
+		return nil, err
+	}
+	var out Database
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) DeleteDatabase(ctx context.Context, accountID, ref string) error {
+	path := "/api/v1/accounts/" + accountID + "/databases/" + iamPathRef(ref)
+	_, _, err := c.Do(ctx, http.MethodDelete, path, accountID, "", nil)
+	if err != nil {
+		if apiErr, ok := err.(*APIError); ok && apiErr.NotFound() {
+			return nil
+		}
+	}
+	return err
+}
+
+func (c *Client) CreateCache(ctx context.Context, accountID string, body CacheCreate) (*Cache, error) {
+	path := "/api/v1/accounts/" + accountID + "/caches"
+	raw, _, err := c.Do(ctx, http.MethodPost, path, accountID, idempotencyKey("redis_instance", accountID, body.Name), body)
+	if err != nil {
+		return nil, err
+	}
+	var out Cache
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) GetCache(ctx context.Context, accountID, ref string) (*Cache, error) {
+	path := "/api/v1/accounts/" + accountID + "/caches/" + iamPathRef(ref)
+	raw, _, err := c.Do(ctx, http.MethodGet, path, accountID, "", nil)
+	if err != nil {
+		return nil, err
+	}
+	var out Cache
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) DeleteCache(ctx context.Context, accountID, ref string) error {
+	path := "/api/v1/accounts/" + accountID + "/caches/" + iamPathRef(ref)
+	_, _, err := c.Do(ctx, http.MethodDelete, path, accountID, "", nil)
+	if err != nil {
+		if apiErr, ok := err.(*APIError); ok && apiErr.NotFound() {
+			return nil
+		}
+	}
+	return err
+}
+
+func (c *Client) CreateDatabaseUser(ctx context.Context, accountID, instanceRef, username, password, role, database string) (*DatabaseUser, error) {
+	path := "/api/v1/accounts/" + accountID + "/databases/" + iamPathRef(instanceRef) + "/users"
+	body := map[string]string{"username": username, "password": password, "role": role}
+	if database != "" {
+		body["database"] = database
+	}
+	raw, _, err := c.Do(ctx, http.MethodPost, path, accountID, "", body)
+	if err != nil {
+		return nil, err
+	}
+	var out DatabaseUser
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) GetDatabaseUser(ctx context.Context, accountID, instanceRef, username string) (*DatabaseUser, error) {
+	path := "/api/v1/accounts/" + accountID + "/databases/" + iamPathRef(instanceRef) + "/users/" + iamPathRef(username)
+	raw, _, err := c.Do(ctx, http.MethodGet, path, accountID, "", nil)
+	if err != nil {
+		return nil, err
+	}
+	var out DatabaseUser
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) RotateDatabaseUser(ctx context.Context, accountID, instanceRef, username, password string) (*DatabaseUser, error) {
+	path := "/api/v1/accounts/" + accountID + "/databases/" + iamPathRef(instanceRef) + "/users/" + iamPathRef(username) + "/rotate"
+	raw, _, err := c.Do(ctx, http.MethodPost, path, accountID, "", map[string]string{"password": password})
+	if err != nil {
+		return nil, err
+	}
+	var out DatabaseUser
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) DeleteDatabaseUser(ctx context.Context, accountID, instanceRef, username string) error {
+	path := "/api/v1/accounts/" + accountID + "/databases/" + iamPathRef(instanceRef) + "/users/" + iamPathRef(username)
+	_, _, err := c.Do(ctx, http.MethodDelete, path, accountID, "", nil)
+	if err != nil {
+		if apiErr, ok := err.(*APIError); ok && apiErr.NotFound() {
+			return nil
+		}
+	}
+	return err
+}
+
 func idempotencyKey(kind, accountID, name string) string {
 	return "terraform-" + kind + "-" + accountID + "-" + name
 }

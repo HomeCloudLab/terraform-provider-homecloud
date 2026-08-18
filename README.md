@@ -33,6 +33,20 @@ separate `iam_arn`. Attachments use `principal_id` (UUID), e.g. `data.homecloud_
 Document JSON uses `Version = "2026-07-24"` (not AWS `2012-10-17`). Example:
 `examples/iam`.
 
+## P3 MDB / Redis
+
+| Resource | API |
+|----------|-----|
+| `homecloud_mdb_instance` | `/api/v1/accounts/{id}/databases` |
+| `homecloud_mdb_user` | `/databases/{instance}/users` |
+| `homecloud_redis_instance` | `/api/v1/accounts/{id}/caches` |
+
+Create waits until `status=active` (or errors on `failed`). GET is by name or UUID.
+`iam_arn` is `arn:homecloud:mdb::{account}:instance/{name}` and
+`arn:homecloud:redis::{account}:cache/{name}`. User `password` is write-only and
+never on GET. Example: `examples/mdb`. Redis credentials stay in the
+`credentials_secret` HomeCloud secret, not in the Redis resource.
+
 ## Configure
 
 ```hcl
@@ -95,3 +109,4 @@ go test ./internal/provider -count=1 -timeout 20m
 ```
 
 IAM acc tests also need `HC_TF_ACC_IAM=1` and an owner/admin Access Key (`iam.manage`).
+MDB/Redis acc tests also need `HC_TF_ACC_MDB=1` (create waiters can take several minutes).
