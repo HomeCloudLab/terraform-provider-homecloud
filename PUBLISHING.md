@@ -12,9 +12,13 @@ Releases are signed with the GPG key whose public half is
 
 Fingerprint: `8A98220ACEEF8018FCEDCEBE4B8BCFED1A615BA9`
 
+GitHub Releases already has a signed **v0.1.0**:
+https://github.com/HomeCloudLab/terraform-provider-homecloud/releases/tag/v0.1.0
+(`SHA256SUMS` + `SHA256SUMS.sig` + zips + manifest).
+
 GitHub Actions secrets already set on the repo: `GPG_PRIVATE_KEY`, `PASSPHRASE`.
-A tag `v*` (for example `v0.1.0`) runs GoReleaser and uploads zips +
-`SHA256SUMS` + `SHA256SUMS.sig` + the Registry manifest.
+Later tags `v*` need `.github/workflows/release.yml` on `main` (pushing that
+file requires `gh auth refresh --scopes repo,workflow`).
 
 ## Already in this repo
 
