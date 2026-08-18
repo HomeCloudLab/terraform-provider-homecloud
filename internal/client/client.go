@@ -59,15 +59,15 @@ type Account struct {
 }
 
 type Queue struct {
-	ID                         string `json:"id"`
-	Name                       string `json:"name"`
-	Status                     string `json:"status"`
-	IamARN                     string `json:"iam_arn"`
-	QueueURL                   string `json:"queue_url"`
-	MaxMessageSize             *int64 `json:"max_message_size"`
-	VisibilityTimeoutSeconds   *int64 `json:"visibility_timeout_seconds"`
-	MaxReceiveCount            *int64 `json:"max_receive_count"`
-	MessageRetentionSeconds    *int64 `json:"message_retention_seconds"`
+	ID                       string `json:"id"`
+	Name                     string `json:"name"`
+	Status                   string `json:"status"`
+	IamARN                   string `json:"iam_arn"`
+	QueueURL                 string `json:"queue_url"`
+	MaxMessageSize           *int64 `json:"max_message_size"`
+	VisibilityTimeoutSeconds *int64 `json:"visibility_timeout_seconds"`
+	MaxReceiveCount          *int64 `json:"max_receive_count"`
+	MessageRetentionSeconds  *int64 `json:"message_retention_seconds"`
 }
 
 type QueueCreate struct {
@@ -91,6 +91,24 @@ type Bucket struct {
 	IamARN    string  `json:"iam_arn"`
 	Status    string  `json:"status"`
 	CreatedAt *string `json:"created_at"`
+}
+
+type Secret struct {
+	ID              string   `json:"id"`
+	Name            string   `json:"name"`
+	Status          string   `json:"status"`
+	IamARN          string   `json:"iam_arn"`
+	Description     *string  `json:"description"`
+	Version         int64    `json:"version"`
+	HasValue        bool     `json:"has_value"`
+	KeyNames        []string `json:"key_names"`
+	KeyCount        int64    `json:"key_count"`
+	ApproxSizeBytes int64    `json:"approx_size_bytes"`
+}
+
+type SecretCreate struct {
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
 }
 
 func (c *Client) httpClient() *http.Client {
@@ -280,6 +298,73 @@ func (c *Client) GetBucket(ctx context.Context, accountID, name string) (*Bucket
 
 func (c *Client) DeleteBucket(ctx context.Context, accountID, name string) error {
 	path := "/api/v1/accounts/" + accountID + "/storage/buckets/" + name
+	_, _, err := c.Do(ctx, http.MethodDelete, path, accountID, "", nil)
+	if err != nil {
+		if apiErr, ok := err.(*APIError); ok && apiErr.NotFound() {
+			return nil
+		}
+	}
+	return err
+}
+
+func (c *Client) CreateSecret(ctx context.Context, accountID string, body SecretCreate) (*Secret, error) {
+	path := "/api/v1/accounts/" + accountID + "/secrets"
+	raw, _, err := c.Do(ctx, http.MethodPost, path, accountID, idempotencyKey("secret", accountID, body.Name), body)
+	if err != nil {
+		return nil, err
+	}
+	var out Secret
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) GetSecret(ctx context.Context, accountID, name string) (*Secret, error) {
+	path := "/api/v1/accounts/" + accountID + "/secrets/" + name
+	raw, _, err := c.Do(ctx, http.MethodGet, path, accountID, "", nil)
+	if err != nil {
+		return nil, err
+	}
+	var out Secret
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) UpdateSecret(ctx context.Context, accountID, name, description string) (*Secret, error) {
+	path := "/api/v1/accounts/" + accountID + "/secrets/" + name
+	payload := map[string]*string{"description": nil}
+	if description != "" {
+		payload["description"] = &description
+	}
+	raw, _, err := c.Do(ctx, http.MethodPatch, path, accountID, "", payload)
+	if err != nil {
+		return nil, err
+	}
+	var out Secret
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) PutSecretValue(ctx context.Context, accountID, name string, values map[string]string) (*Secret, error) {
+	path := "/api/v1/accounts/" + accountID + "/secrets/" + name + "/value"
+	raw, _, err := c.Do(ctx, http.MethodPut, path, accountID, "", map[string]map[string]string{"values": values})
+	if err != nil {
+		return nil, err
+	}
+	var out Secret
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) DeleteSecret(ctx context.Context, accountID, name string) error {
+	path := "/api/v1/accounts/" + accountID + "/secrets/" + name
 	_, _, err := c.Do(ctx, http.MethodDelete, path, accountID, "", nil)
 	if err != nil {
 		if apiErr, ok := err.(*APIError); ok && apiErr.NotFound() {

@@ -118,6 +118,7 @@ func (p *homecloudProvider) Resources(_ context.Context) []func() resource.Resou
 	return []func() resource.Resource{
 		NewMQQueueResource,
 		NewSOBucketResource,
+		NewSecretResource,
 	}
 }
 

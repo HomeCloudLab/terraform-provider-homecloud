@@ -7,17 +7,21 @@ manage K3s, Helm, or data-plane bytes.
 The provider is **not** on the Terraform Registry yet. Build it locally and use
 `dev_overrides` (see below).
 
-## P1 resources
+## P1 / P1b resources
 
 | Resource | API |
 |----------|-----|
 | `homecloud_mq_queue` | `/api/v1/accounts/{id}/queues` |
 | `homecloud_so_bucket` | `/api/v1/accounts/{id}/storage/buckets` |
+| `homecloud_secret` | `/api/v1/accounts/{id}/secrets` |
 | `data.homecloud_account` | whoami + `GET /accounts/{id}` |
 
 Bucket schema is `name` only. Versioning / lifecycle / website are later sibling
 resources, not attributes on `homecloud_so_bucket`. There is no `region` until
 the control plane defines one.
+
+`homecloud_secret.values` is **write-only** (Terraform 1.11+). GET never returns
+payloads; they are not stored in Terraform state.
 
 ## Configure
 
@@ -38,8 +42,8 @@ provider "homecloud" {
 Environment: `HC_ACCESS_KEY_ID`, `HC_SECRET_ACCESS_KEY`, `HC_APEX`, optional `HC_ACCOUNT_ID` / `HC_ENDPOINT`.
 
 Create a dedicated IAM user (`developer` or `admin`) and an Access Key bound to that user,
-or a Service Account key with IAM policies that allow the mapped actions (queue/bucket
-Create/Delete/Get). Unmapped console routes still return `403 iam.management_sa_not_enabled`.
+or a Service Account key with IAM policies that allow the mapped actions (queue/bucket/secret
+Create/Delete/Get, plus `secrets:PutSecretValue` to set values). Unmapped console routes still return `403 iam.management_sa_not_enabled`.
 
 ## Local run (Windows)
 

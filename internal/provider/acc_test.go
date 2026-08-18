@@ -80,3 +80,46 @@ func TestAccMVPQueueBucketAccount(t *testing.T) {
 		},
 	})
 }
+
+func testAccSecretConfig(suffix string) string {
+	return fmt.Sprintf(`
+provider "homecloud" {}
+
+resource "homecloud_secret" "demo" {
+  name        = "tfacc-%[1]s-secret"
+  description = "acc"
+  values = {
+    EXAMPLE_KEY = "acc-value"
+  }
+}
+`, suffix)
+}
+
+func TestAccSecret(t *testing.T) {
+	testAccPreCheck(t)
+	suffix := acctest.RandStringFromCharSet(8, acctest.CharSetAlphaNum)
+	name := "tfacc-" + suffix + "-secret"
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSecretConfig(suffix),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("homecloud_secret.demo", "name", name),
+					resource.TestMatchResourceAttr(
+						"homecloud_secret.demo",
+						"iam_arn",
+						regexp.MustCompile(`^arn:homecloud:secrets::[0-9]+:secret/`+regexp.QuoteMeta(name)+`$`),
+					),
+					resource.TestCheckResourceAttr("homecloud_secret.demo", "has_value", "true"),
+				),
+			},
+			{
+				Config:             testAccSecretConfig(suffix),
+				PlanOnly:           true,
+				ExpectNonEmptyPlan: false,
+			},
+		},
+	})
+}
