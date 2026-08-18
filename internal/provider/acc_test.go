@@ -324,3 +324,93 @@ func TestAccP4FunctionRegistryDomain(t *testing.T) {
 		},
 	})
 }
+
+func testAccP5Config(suffix string) string {
+	return fmt.Sprintf(`
+provider "homecloud" {}
+
+resource "homecloud_ssh_key" "demo" {
+  name = "tfacc-%[1]s"
+}
+
+resource "homecloud_application" "demo" {
+  name     = "tfacc-%[1]s"
+  slug     = "tfacc-%[1]s"
+  template = "api-only"
+}
+`, suffix)
+}
+
+func TestAccP5SSHKeyAndApplication(t *testing.T) {
+	testAccPreCheck(t)
+	if os.Getenv("HC_TF_ACC_P5") == "" {
+		t.Skip("set HC_TF_ACC_P5=1 to run SSH key and application acceptance tests")
+	}
+	suffix := acctest.RandStringFromCharSet(8, acctest.CharSetAlphaNum)
+	name := "tfacc-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccP5Config(suffix),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("homecloud_ssh_key.demo", "name", name),
+					resource.TestMatchResourceAttr(
+						"homecloud_ssh_key.demo",
+						"iam_arn",
+						regexp.MustCompile(`^arn:homecloud:compute::[0-9]+:ssh-key/`+regexp.QuoteMeta(name)+`$`),
+					),
+					resource.TestCheckResourceAttrSet("homecloud_ssh_key.demo", "private_key"),
+					resource.TestCheckResourceAttr("homecloud_application.demo", "slug", name),
+					resource.TestCheckResourceAttr("homecloud_application.demo", "status", "draft"),
+					resource.TestMatchResourceAttr(
+						"homecloud_application.demo",
+						"iam_arn",
+						regexp.MustCompile(`^arn:homecloud:applications::[0-9]+:application/`+regexp.QuoteMeta(name)+`$`),
+					),
+				),
+			},
+			{
+				Config:             testAccP5Config(suffix),
+				PlanOnly:           true,
+				ExpectNonEmptyPlan: false,
+			},
+		},
+	})
+}
+
+func TestAccP5ComputeMachine(t *testing.T) {
+	testAccPreCheck(t)
+	if os.Getenv("HC_TF_ACC_COMPUTE") == "" {
+		t.Skip("set HC_TF_ACC_COMPUTE=1 to run compute machine acceptance tests (provisions a VM)")
+	}
+	suffix := acctest.RandStringFromCharSet(8, acctest.CharSetAlphaNum)
+	name := "tfacc-" + suffix
+	config := fmt.Sprintf(`
+provider "homecloud" {}
+
+resource "homecloud_compute_machine" "demo" {
+  name          = "%[1]s"
+  machine_class = "basic"
+  image_id      = "ubuntu-24.04"
+}
+`, name)
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
+		Steps: []resource.TestStep{
+			{
+				Config: config,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("homecloud_compute_machine.demo", "name", name),
+					resource.TestCheckResourceAttr("homecloud_compute_machine.demo", "status", "RUNNING"),
+				),
+			},
+			{
+				Config:             config,
+				PlanOnly:           true,
+				ExpectNonEmptyPlan: false,
+			},
+		},
+	})
+}

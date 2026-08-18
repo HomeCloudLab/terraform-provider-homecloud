@@ -671,6 +671,32 @@ func (c *Client) WaitUntilActive(ctx context.Context, getStatus func() (string, 
 	}
 }
 
+func (c *Client) WaitUntilSucceeded(ctx context.Context, getStatus func() (string, error), timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	for {
+		status, err := getStatus()
+		if err != nil {
+			return err
+		}
+		switch strings.ToUpper(status) {
+		case "SUCCEEDED":
+			return nil
+		case "FAILED":
+			return fmt.Errorf("operation failed")
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("timeout waiting for succeeded (last status %s)", status)
+		}
+		timer := time.NewTimer(5 * time.Second)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return ctx.Err()
+		case <-timer.C:
+		}
+	}
+}
+
 func (c *Client) CreateDatabase(ctx context.Context, accountID string, body DatabaseCreate) (*Database, error) {
 	path := "/api/v1/accounts/" + accountID + "/databases"
 	raw, _, err := c.Do(ctx, http.MethodPost, path, accountID, idempotencyKey("mdb_instance", accountID, body.Name), body)
@@ -1035,4 +1061,205 @@ func (c *Client) DeleteDomain(ctx context.Context, accountID, ref string) error 
 
 func idempotencyKey(kind, accountID, name string) string {
 	return "terraform-" + kind + "-" + accountID + "-" + name
+}
+
+type Nic struct {
+	PublicIPv4 string `json:"public_ipv4"`
+	PublicIPv6 string `json:"public_ipv6"`
+	PrivateIP  string `json:"private_ip"`
+}
+
+type Machine struct {
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	Class         string `json:"class"`
+	ImageID       string `json:"image_id"`
+	RegionCode    string `json:"region_code"`
+	AzCode        string `json:"az_code"`
+	Status        string `json:"status"`
+	ProviderState string `json:"provider_state"`
+	DesiredState  string `json:"desired_state"`
+	IamARN        string `json:"iam_arn"`
+	Nic           Nic    `json:"nic"`
+}
+
+type MachineCreate struct {
+	Name       string   `json:"name"`
+	Class      string   `json:"class"`
+	ImageID    string   `json:"image_id"`
+	RegionCode string   `json:"region_code,omitempty"`
+	AzCode     string   `json:"az_code,omitempty"`
+	SSHKeyIDs  []string `json:"ssh_key_ids,omitempty"`
+}
+
+type MachineCreateResult struct {
+	MachineID   string `json:"machine_id"`
+	OperationID string `json:"operation_id"`
+}
+
+type Operation struct {
+	ID     string `json:"id"`
+	Status string `json:"status"`
+	Action string `json:"action"`
+	Error  string `json:"error"`
+}
+
+type SSHKey struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Fingerprint string `json:"fingerprint"`
+	KeyType     string `json:"key_type"`
+	PublicKey   string `json:"public_key"`
+	PrivateKey  string `json:"private_key"`
+	IamARN      string `json:"iam_arn"`
+}
+
+type SSHKeyCreate struct {
+	Name string `json:"name"`
+}
+
+type Application struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Slug      string `json:"slug"`
+	Template  string `json:"template"`
+	Status    string `json:"status"`
+	ProjectID string `json:"project_id"`
+	IamARN    string `json:"iam_arn"`
+}
+
+type ApplicationCreate struct {
+	Name      string `json:"name"`
+	Slug      string `json:"slug"`
+	Template  string `json:"template,omitempty"`
+	ProjectID string `json:"project_id,omitempty"`
+}
+
+func (c *Client) GetOperation(ctx context.Context, accountID, operationID string) (*Operation, error) {
+	path := "/api/v1/accounts/" + accountID + "/operations/" + iamPathRef(operationID)
+	raw, _, err := c.Do(ctx, http.MethodGet, path, accountID, "", nil)
+	if err != nil {
+		return nil, err
+	}
+	var out Operation
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) CreateMachine(ctx context.Context, accountID string, body MachineCreate) (*MachineCreateResult, error) {
+	path := "/api/v1/accounts/" + accountID + "/compute/machines"
+	raw, _, err := c.Do(ctx, http.MethodPost, path, accountID, idempotencyKey("compute_machine", accountID, body.Name), body)
+	if err != nil {
+		return nil, err
+	}
+	var out MachineCreateResult
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) GetMachine(ctx context.Context, accountID, ref string) (*Machine, error) {
+	path := "/api/v1/accounts/" + accountID + "/compute/machines/" + iamPathRef(ref)
+	raw, _, err := c.Do(ctx, http.MethodGet, path, accountID, "", nil)
+	if err != nil {
+		return nil, err
+	}
+	var out Machine
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) DeleteMachine(ctx context.Context, accountID, ref string) (*MachineCreateResult, error) {
+	path := "/api/v1/accounts/" + accountID + "/compute/machines/" + iamPathRef(ref)
+	raw, _, err := c.Do(ctx, http.MethodDelete, path, accountID, "", nil)
+	if err != nil {
+		if apiErr, ok := err.(*APIError); ok && apiErr.NotFound() {
+			return &MachineCreateResult{}, nil
+		}
+		return nil, err
+	}
+	var out MachineCreateResult
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) CreateSSHKey(ctx context.Context, accountID string, body SSHKeyCreate) (*SSHKey, error) {
+	path := "/api/v1/accounts/" + accountID + "/compute/ssh-keys"
+	raw, _, err := c.Do(ctx, http.MethodPost, path, accountID, idempotencyKey("ssh_key", accountID, body.Name), body)
+	if err != nil {
+		return nil, err
+	}
+	var out SSHKey
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) GetSSHKey(ctx context.Context, accountID, ref string) (*SSHKey, error) {
+	path := "/api/v1/accounts/" + accountID + "/compute/ssh-keys/" + iamPathRef(ref)
+	raw, _, err := c.Do(ctx, http.MethodGet, path, accountID, "", nil)
+	if err != nil {
+		return nil, err
+	}
+	var out SSHKey
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) DeleteSSHKey(ctx context.Context, accountID, ref string) error {
+	path := "/api/v1/accounts/" + accountID + "/compute/ssh-keys/" + iamPathRef(ref)
+	_, _, err := c.Do(ctx, http.MethodDelete, path, accountID, "", nil)
+	if err != nil {
+		if apiErr, ok := err.(*APIError); ok && apiErr.NotFound() {
+			return nil
+		}
+	}
+	return err
+}
+
+func (c *Client) CreateApplication(ctx context.Context, accountID string, body ApplicationCreate) (*Application, error) {
+	path := "/api/v1/accounts/" + accountID + "/applications"
+	raw, _, err := c.Do(ctx, http.MethodPost, path, accountID, idempotencyKey("application", accountID, body.Slug), body)
+	if err != nil {
+		return nil, err
+	}
+	var out Application
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) GetApplication(ctx context.Context, accountID, ref string) (*Application, error) {
+	path := "/api/v1/accounts/" + accountID + "/applications/" + iamPathRef(ref)
+	raw, _, err := c.Do(ctx, http.MethodGet, path, accountID, "", nil)
+	if err != nil {
+		return nil, err
+	}
+	var out Application
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) DeleteApplication(ctx context.Context, accountID, ref string) error {
+	path := "/api/v1/accounts/" + accountID + "/applications/" + iamPathRef(ref)
+	_, _, err := c.Do(ctx, http.MethodDelete, path, accountID, "", nil)
+	if err != nil {
+		if apiErr, ok := err.(*APIError); ok && apiErr.NotFound() {
+			return nil
+		}
+	}
+	return err
 }

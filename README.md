@@ -58,6 +58,16 @@ never on GET. Example: `examples/mdb`. Redis credentials stay in the
 
 `homecloud_function` is spec-only: no workspace files, deploys, or invoke. Function **delete** needs an owner/admin Access Key (`function.delete`). Create/update is developer. Example: `examples/p4`. Domain create stays `pending_verification` until you add the TXT record out of band. IR image tags are not Terraform resources.
 
+## P5 Compute / SSH / Applications
+
+| Resource | API |
+|----------|-----|
+| `homecloud_compute_machine` | `/api/v1/accounts/{id}/compute/machines` |
+| `homecloud_ssh_key` | `/api/v1/accounts/{id}/compute/ssh-keys` |
+| `homecloud_application` | `/api/v1/accounts/{id}/applications` |
+
+`homecloud_compute_machine` waits on `GET .../operations/{id}` until `SUCCEEDED` or `FAILED`. `homecloud_application` is spec-only (`draft` — no provision/deploy). `homecloud_ssh_key.private_key` is sensitive, returned once on create, never on GET. Example: `examples/p5`. Machine acc tests also need `HC_TF_ACC_COMPUTE=1` (provisions a VM).
+
 ## Configure
 
 ```hcl
@@ -103,6 +113,8 @@ IAM example (`examples/iam`) needs an **owner/admin** Access Key. Same `TF_CLI_C
 
 P4 example (`examples/p4`) also needs owner/admin to **destroy** functions (`function.delete`). Skip `terraform init`.
 
+P5 example (`examples/p5`) creates an SSH key and a draft application. Uncomment the machine resource only if you want a VM. Skip `terraform init`.
+
 `terraform apply` warns that development overrides are in effect. That is expected.
 
 ## Develop
@@ -124,3 +136,4 @@ go test ./internal/provider -count=1 -timeout 20m
 IAM acc tests also need `HC_TF_ACC_IAM=1` and an owner/admin Access Key (`iam.manage`).
 MDB/Redis acc tests also need `HC_TF_ACC_MDB=1` (create waiters can take several minutes).
 Function / IR / domain acc tests also need `HC_TF_ACC_P4=1` (function delete needs owner/admin).
+SSH key / application acc tests also need `HC_TF_ACC_P5=1`. Compute machine acc tests also need `HC_TF_ACC_COMPUTE=1`.

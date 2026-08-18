@@ -129,6 +129,9 @@ func (p *homecloudProvider) Resources(_ context.Context) []func() resource.Resou
 		NewFunctionURLResource,
 		NewIRRepositoryResource,
 		NewDomainResource,
+		NewComputeMachineResource,
+		NewSSHKeyResource,
+		NewApplicationResource,
 	}
 }
 

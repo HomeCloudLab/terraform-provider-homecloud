@@ -119,6 +119,15 @@ func TestWaitUntilActiveFailed(t *testing.T) {
 	}
 }
 
+func TestWaitUntilSucceededImmediate(t *testing.T) {
+	c := &Client{}
+	if err := c.WaitUntilSucceeded(context.Background(), func() (string, error) {
+		return "SUCCEEDED", nil
+	}, time.Second); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestCreateIAMPolicyMarshalsDocumentObject(t *testing.T) {
 	var gotBody []byte
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -417,6 +426,95 @@ func TestCreateGetDeleteRepositoryAndDomain(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := c.DeleteDomain(context.Background(), accountID, "app.example.com"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCreateGetDeleteMachineSSHKeyAndApplication(t *testing.T) {
+	accountID := "11111111-1111-1111-1111-111111111111"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/compute/machines"):
+			if r.Header.Get("Idempotency-Key") != "terraform-compute_machine-"+accountID+"-web-1" {
+				t.Errorf("idempotency %s", r.Header.Get("Idempotency-Key"))
+			}
+			w.WriteHeader(http.StatusAccepted)
+			_, _ = io.WriteString(w, `{"machine_id":"m1","operation_id":"op1"}`)
+		case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/operations/"):
+			_, _ = io.WriteString(w, `{"id":"op1","status":"SUCCEEDED","action":"create"}`)
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/compute/machines/web-1"):
+			_, _ = io.WriteString(w, `{"id":"m1","name":"web-1","class":"basic","image_id":"ubuntu-24.04","status":"RUNNING","iam_arn":"arn:homecloud:compute::1:machine/web-1","nic":{"public_ipv4":"1.2.3.4"}}`)
+		case r.Method == http.MethodDelete && strings.HasSuffix(r.URL.Path, "/compute/machines/web-1"):
+			w.WriteHeader(http.StatusAccepted)
+			_, _ = io.WriteString(w, `{"machine_id":"m1","operation_id":"op-del"}`)
+		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/compute/ssh-keys"):
+			w.WriteHeader(http.StatusCreated)
+			_, _ = io.WriteString(w, `{"id":"k1","name":"laptop","fingerprint":"SHA256:abc","key_type":"ed25519","public_key":"ssh-ed25519 AAAA","private_key":"-----BEGIN OPENSSH PRIVATE KEY-----\nX\n-----END OPENSSH PRIVATE KEY-----","iam_arn":"arn:homecloud:compute::1:ssh-key/laptop"}`)
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/compute/ssh-keys/laptop"):
+			_, _ = io.WriteString(w, `{"id":"k1","name":"laptop","fingerprint":"SHA256:abc","key_type":"ed25519","public_key":"ssh-ed25519 AAAA","iam_arn":"arn:homecloud:compute::1:ssh-key/laptop"}`)
+		case r.Method == http.MethodDelete && strings.HasSuffix(r.URL.Path, "/compute/ssh-keys/laptop"):
+			w.WriteHeader(http.StatusNoContent)
+		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/applications"):
+			w.WriteHeader(http.StatusCreated)
+			_, _ = io.WriteString(w, `{"id":"a1","name":"My API","slug":"my-api","template":"api-only","status":"draft","iam_arn":"arn:homecloud:applications::1:application/my-api"}`)
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/applications/my-api"):
+			_, _ = io.WriteString(w, `{"id":"a1","name":"My API","slug":"my-api","template":"api-only","status":"draft","iam_arn":"arn:homecloud:applications::1:application/my-api"}`)
+		case r.Method == http.MethodDelete && strings.HasSuffix(r.URL.Path, "/applications/my-api"):
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Errorf("%s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer srv.Close()
+	c := &Client{Endpoint: srv.URL, AccessKeyID: "k", Secret: "s"}
+	created, err := c.CreateMachine(context.Background(), accountID, MachineCreate{Name: "web-1", Class: "basic", ImageID: "ubuntu-24.04"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if created.OperationID != "op1" {
+		t.Fatalf("%+v", created)
+	}
+	op, err := c.GetOperation(context.Background(), accountID, "op1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if op.Status != "SUCCEEDED" {
+		t.Fatalf("%+v", op)
+	}
+	got, err := c.GetMachine(context.Background(), accountID, "web-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.IamARN != "arn:homecloud:compute::1:machine/web-1" {
+		t.Fatalf("%+v", got)
+	}
+	if _, err := c.DeleteMachine(context.Background(), accountID, "web-1"); err != nil {
+		t.Fatal(err)
+	}
+	key, err := c.CreateSSHKey(context.Background(), accountID, SSHKeyCreate{Name: "laptop"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if key.PrivateKey == "" || key.IamARN == "" {
+		t.Fatalf("%+v", key)
+	}
+	if _, err := c.GetSSHKey(context.Background(), accountID, "laptop"); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.DeleteSSHKey(context.Background(), accountID, "laptop"); err != nil {
+		t.Fatal(err)
+	}
+	app, err := c.CreateApplication(context.Background(), accountID, ApplicationCreate{Name: "My API", Slug: "my-api"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if app.IamARN != "arn:homecloud:applications::1:application/my-api" {
+		t.Fatalf("%+v", app)
+	}
+	if _, err := c.GetApplication(context.Background(), accountID, "my-api"); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.DeleteApplication(context.Background(), accountID, "my-api"); err != nil {
 		t.Fatal(err)
 	}
 }
