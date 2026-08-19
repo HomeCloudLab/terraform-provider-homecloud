@@ -12,8 +12,8 @@ Releases are signed with the GPG key whose public half is
 
 Fingerprint: `8A98220ACEEF8018FCEDCEBE4B8BCFED1A615BA9`
 
-GitHub Releases already has a signed **v0.1.0**:
-https://github.com/HomeCloudLab/terraform-provider-homecloud/releases/tag/v0.1.0
+GitHub Releases: signed **v0.1.0** (first listing) and **v0.1.1** (CLI credentials file):
+https://github.com/HomeCloudLab/terraform-provider-homecloud/releases
 (`SHA256SUMS` + `SHA256SUMS.sig` + zips + manifest).
 
 GitHub Actions secrets already set on the repo: `GPG_PRIVATE_KEY`, `PASSPHRASE`.
@@ -33,7 +33,8 @@ reuse those workflows.
 
 https://registry.terraform.io/providers/homecloudlab/homecloud/latest
 
-`terraform init` installs **v0.1.0**. Terraform CLI reports the GPG key as
+`terraform init` installs the latest listed version (**v0.1.1**). Existing lock
+files need `terraform init -upgrade`. Terraform CLI reports the GPG key as
 **self-signed** (`key ID 4B8BCFED1A615BA9`) — expected for a community provider.
 
 Later versions: tag `v*` on this repo; GoReleaser + Registry pick them up.

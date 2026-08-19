@@ -11,7 +11,7 @@ The HomeCloud Terraform / OpenTofu provider talks to `console.{apex}/api/v1` wit
 
 Install with `terraform init` from
 [`registry.terraform.io/providers/homecloudlab/homecloud`](https://registry.terraform.io/providers/homecloudlab/homecloud/latest)
-(**v0.1.0**). Community listings show as **self-signed** (key ID `4B8BCFED1A615BA9`).
+(**v0.1.1**). Existing lock files: `terraform init -upgrade`. Community listings show as **self-signed** (key ID `4B8BCFED1A615BA9`).
 To hack this repo, use `provider_installation.dev_overrides` and skip `terraform init`.
 See the repository README and `PUBLISHING.md`.
 

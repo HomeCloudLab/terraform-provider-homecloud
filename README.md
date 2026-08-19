@@ -6,7 +6,7 @@ manage K3s, Helm, or data-plane bytes.
 
 Listed on the Terraform Registry:
 [`registry.terraform.io/providers/homecloudlab/homecloud`](https://registry.terraform.io/providers/homecloudlab/homecloud/latest)
-(**v0.1.0**). Run `terraform init`. **User guide:**
+(**v0.1.1**). Run `terraform init` (existing lock files: `terraform init -upgrade`). **User guide:**
 [`docs/guides/getting-started.md`](docs/guides/getting-started.md) · Hebrew
 [`README.he.md`](README.he.md).
 

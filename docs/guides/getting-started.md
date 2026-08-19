@@ -10,7 +10,7 @@ Traefik, GitOps).
 
 Listed on the Terraform Registry as
 [`homecloudlab/homecloud`](https://registry.terraform.io/providers/homecloudlab/homecloud/latest)
-(**v0.1.0**). Run `terraform init` for normal use (see [Install](#install)).
+(**v0.1.1**). Run `terraform init` for normal use (see [Install](#install)). Existing lock files: `terraform init -upgrade`.
 
 Repo: [`terraform-provider-homecloud`](https://github.com/HomeCloudLab/terraform-provider-homecloud)
 (GitHub may show a rename hint; keep the `terraform-provider-*` name for Registry).
@@ -100,7 +100,7 @@ In Actions the provider reads `ACTIONS_ID_TOKEN_REQUEST_URL` /
 
 ## Install
 
-`terraform init` downloads **v0.1.0** from the Registry. No local binary needed.
+`terraform init` downloads **v0.1.1** from the Registry. No local binary needed. Workspaces locked to v0.1.0: `terraform init -upgrade`.
 
 To hack this repo, build locally and use `dev_overrides` (then skip `init`):
 

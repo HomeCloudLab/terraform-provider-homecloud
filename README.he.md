@@ -8,7 +8,7 @@ English: [docs/guides/getting-started.md](docs/guides/getting-started.md).
 
 רשום ב-Terraform Registry:
 [`homecloudlab/homecloud`](https://registry.terraform.io/providers/homecloudlab/homecloud/latest)
-(**v0.1.0**). הריצו `terraform init`. CI ו-`release.yml` רצים ב-GitHub Actions —
+(**v0.1.1**). הריצו `terraform init` (קבצי lock קיימים: `terraform init -upgrade`). CI ו-`release.yml` רצים ב-GitHub Actions —
 ראו [`PUBLISHING.md`](PUBLISHING.md).
 
 ריפו: [`terraform-provider-homecloud`](https://github.com/HomeCloudLab/terraform-provider-homecloud)
@@ -91,7 +91,7 @@ English: [docs/guides/getting-started.md](docs/guides/getting-started.md).
 
 ## התקנה
 
-`terraform init` מוריד **v0.1.0** מה-Registry. אין צורך בבינארי מקומי.
+`terraform init` מוריד **v0.1.1** מה-Registry. אין צורך בבינארי מקומי. workspace שכבר נעל v0.1.0: `terraform init -upgrade`.
 
 לעבוד על הריפו הזה: בנו מקומית והשתמשו ב-`dev_overrides` (ואז דלגו על `init`):
 
