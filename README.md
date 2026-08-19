@@ -4,17 +4,17 @@ User-facing Terraform / OpenTofu provider for HomeCloud account resources.
 Talks to `console.{apex}/api/v1` with **SigV1 Access Keys** (ADR-049). It does **not**
 manage K3s, Helm, or data-plane bytes.
 
-The provider is **not** on the Terraform Registry yet. Build it locally and use
-`dev_overrides` (see below). **User guide (all resources, examples, import):**
+Listed on the Terraform Registry:
+[`registry.terraform.io/providers/homecloudlab/homecloud`](https://registry.terraform.io/providers/homecloudlab/homecloud/latest)
+(**v0.1.0**). Run `terraform init`. **User guide:**
 [`docs/guides/getting-started.md`](docs/guides/getting-started.md) · Hebrew
 [`README.he.md`](README.he.md).
 
-Signed GitHub Release **v0.1.0** is up (GPG fingerprint
-`8A98220ACEEF8018FCEDCEBE4B8BCFED1A615BA9`). CI (`go test` / `go build`) and
-`release.yml` run on GitHub Actions. A live listing still needs a HashiCorp
-**Publish** click — see [`PUBLISHING.md`](PUBLISHING.md).
-
-Skip `terraform init` until the listing is live.
+Releases are GPG-signed (fingerprint
+`8A98220ACEEF8018FCEDCEBE4B8BCFED1A615BA9`; CLI may show key ID
+`4B8BCFED1A615BA9` as **self-signed** — expected for community providers).
+CI and `release.yml` run on GitHub Actions. Publisher notes:
+[`PUBLISHING.md`](PUBLISHING.md).
 
 ## P1 / P1b / P2 resources
 
@@ -109,6 +109,11 @@ Create/Delete/Get, plus `secrets:PutSecretValue` to set values). Unmapped consol
 
 ## Local run (Windows)
 
+Normal use: `terraform init` from the Registry (no `dev.tfrc`).
+
+To hack this repo, build a local binary and use `dev_overrides` — then **skip
+`terraform init`**:
+
 ```powershell
 cd terraform-provider-homecloud
 go build -o terraform-provider-homecloud.exe .
@@ -120,19 +125,17 @@ $env:HC_SECRET_ACCESS_KEY = "..."
 $env:HC_APEX = "holab.abrdns.com"
 
 cd examples\mvp
-# Skip `terraform init` — overrides do not use the Registry (init will 404).
+# Skip `terraform init` only while TF_CLI_CONFIG_FILE points at dev_overrides.
 terraform apply -var="name_suffix=$env:USERNAME"
 terraform plan    # expect: No changes
 terraform destroy -var="name_suffix=$env:USERNAME"
 ```
 
-IAM example (`examples/iam`) needs an **owner/admin** Access Key. Same `TF_CLI_CONFIG_FILE`; skip `terraform init`.
+IAM example (`examples/iam`) needs an **owner/admin** Access Key.
+P4 destroy needs owner/admin (`function.delete`).
+P5 creates an SSH key and a draft application; uncomment the machine only if you want a VM.
 
-P4 example (`examples/p4`) also needs owner/admin to **destroy** functions (`function.delete`). Skip `terraform init`.
-
-P5 example (`examples/p5`) creates an SSH key and a draft application. Uncomment the machine resource only if you want a VM. Skip `terraform init`.
-
-`terraform apply` warns that development overrides are in effect. That is expected.
+With `dev_overrides`, `terraform apply` warns that development overrides are in effect. That is expected.
 
 ## Develop
 

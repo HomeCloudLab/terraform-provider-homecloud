@@ -9,10 +9,11 @@ description: |-
 The HomeCloud Terraform / OpenTofu provider talks to `console.{apex}/api/v1` with
 **SigV1 Access Keys**. It does **not** manage K3s, Helm, or data-plane bytes.
 
-Until this provider is listed on the Terraform Registry, build from source and
-use `provider_installation.dev_overrides` (skip `terraform init`). Signed GitHub
-Release **v0.1.0** already exists; listing still needs a HashiCorp **Publish**
-click. See the repository README and `PUBLISHING.md`.
+Install with `terraform init` from
+[`registry.terraform.io/providers/homecloudlab/homecloud`](https://registry.terraform.io/providers/homecloudlab/homecloud/latest)
+(**v0.1.0**). Community listings show as **self-signed** (key ID `4B8BCFED1A615BA9`).
+To hack this repo, use `provider_installation.dev_overrides` and skip `terraform init`.
+See the repository README and `PUBLISHING.md`.
 
 ## Example Usage
 

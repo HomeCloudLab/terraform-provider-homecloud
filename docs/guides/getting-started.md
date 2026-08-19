@@ -8,9 +8,9 @@ This provider manages **account resources** on `console.{apex}/api/v1` with
 **SigV1 Access Keys**. It does **not** manage the homelab itself (K3s, Helm,
 Traefik, GitOps).
 
-The provider is **not on the Terraform Registry yet**. Signed GitHub Release
-**v0.1.0** already exists. Build from source and skip `terraform init` until
-HashiCorp **Publish** lists `homecloudlab/homecloud` (see [Install](#install)).
+Listed on the Terraform Registry as
+[`homecloudlab/homecloud`](https://registry.terraform.io/providers/homecloudlab/homecloud/latest)
+(**v0.1.0**). Run `terraform init` for normal use (see [Install](#install)).
 
 Repo: [`terraform-provider-homecloud`](https://github.com/HomeCloudLab/terraform-provider-homecloud)
 (GitHub may show a rename hint; keep the `terraform-provider-*` name for Registry).
@@ -90,7 +90,11 @@ In Actions the provider reads `ACTIONS_ID_TOKEN_REQUEST_URL` /
 
 ---
 
-## Install (local, until Registry)
+## Install
+
+`terraform init` downloads **v0.1.0** from the Registry. No local binary needed.
+
+To hack this repo, build locally and use `dev_overrides` (then skip `init`):
 
 ```powershell
 cd terraform-provider-homecloud
@@ -103,8 +107,9 @@ $env:HC_SECRET_ACCESS_KEY = "..."
 $env:HC_APEX = "holab.abrdns.com"
 ```
 
-`dev_overrides` ignore the Registry. **`terraform init` will 404** — skip it.
-`terraform apply` warns that development overrides are in effect. That is expected.
+`dev_overrides` ignore the Registry. **Skip `terraform init`** while they are set
+(`init` would not use the listing). `terraform apply` warns that development
+overrides are in effect. That is expected.
 
 ```hcl
 terraform {
@@ -403,8 +408,5 @@ The console stays fully writable. Drift is `terraform plan`, `import`, or
 
 ## Registry listing
 
-Docs, `terraform-registry-manifest.json`, GoReleaser, and GitHub Actions (CI +
-signed `v*` releases) live in this repo. **v0.1.0** is already a GPG-signed
-GitHub Release (public key [`docs/signing-key.asc`](../signing-key.asc)). A live
-listing on `registry.terraform.io` still needs a HashiCorp **Publish** click for
-namespace `homecloudlab`. See [`PUBLISHING.md`](https://github.com/HomeCloudLab/terraform-provider-homecloud/blob/main/PUBLISHING.md).
+Live: [`registry.terraform.io/providers/homecloudlab/homecloud`](https://registry.terraform.io/providers/homecloudlab/homecloud/latest).
+New `v*` tags are GPG-signed ([`docs/signing-key.asc`](../signing-key.asc)). See [`PUBLISHING.md`](https://github.com/HomeCloudLab/terraform-provider-homecloud/blob/main/PUBLISHING.md).

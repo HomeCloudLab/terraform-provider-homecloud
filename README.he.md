@@ -6,10 +6,10 @@ English: [docs/guides/getting-started.md](docs/guides/getting-started.md).
 הספק מנהל **משאבי חשבון** ב-`console.{apex}/api/v1` עם **Access Keys ב-SigV1**.
 הוא **לא** מנהל את ה-homelab עצמו (K3s, Helm, Traefik, GitOps).
 
-הספק **עדיין לא ב-Terraform Registry**. GitHub Release חתום **v0.1.0** כבר קיים.
-בנו מקוד מקור ודלגו על `terraform init` עד שלחיצת **Publish** ב-HashiCorp תרשום
-את `homecloudlab/homecloud` (ראו [התקנה](#התקנה)). CI ו-`release.yml` רצים
-ב-GitHub Actions — ראו [`PUBLISHING.md`](PUBLISHING.md).
+רשום ב-Terraform Registry:
+[`homecloudlab/homecloud`](https://registry.terraform.io/providers/homecloudlab/homecloud/latest)
+(**v0.1.0**). הריצו `terraform init`. CI ו-`release.yml` רצים ב-GitHub Actions —
+ראו [`PUBLISHING.md`](PUBLISHING.md).
 
 ריפו: [`terraform-provider-homecloud`](https://github.com/HomeCloudLab/terraform-provider-homecloud)
 (GitHub עלול להציג רמז לשינוי שם; השאירו את הקידומת `terraform-provider-*` בשביל ה-Registry).
@@ -82,7 +82,11 @@ English: [docs/guides/getting-started.md](docs/guides/getting-started.md).
 
 ---
 
-## התקנה (מקומית, עד ה-Registry)
+## התקנה
+
+`terraform init` מוריד **v0.1.0** מה-Registry. אין צורך בבינארי מקומי.
+
+לעבוד על הריפו הזה: בנו מקומית והשתמשו ב-`dev_overrides` (ואז דלגו על `init`):
 
 ```powershell
 cd terraform-provider-homecloud
@@ -95,8 +99,8 @@ $env:HC_SECRET_ACCESS_KEY = "..."
 $env:HC_APEX = "holab.abrdns.com"
 ```
 
-`dev_overrides` לא משתמשים ב-Registry. **`terraform init` יחזיר 404** — דלגו עליו.
-`terraform apply` מזהיר ש-overrides פעילים. זה צפוי.
+`dev_overrides` לא משתמשים ב-Registry. **דלגו על `terraform init`** כל עוד הם
+מוגדרים. `terraform apply` מזהיר ש-overrides פעילים. זה צפוי.
 
 ```hcl
 terraform {
@@ -393,7 +397,5 @@ resource "homecloud_application" "api" {
 
 ## רישום ב-Registry
 
-תיעוד, `terraform-registry-manifest.json`, GoReleaser ו-GitHub Actions (CI +
-שחרורים חתומים) נמצאים בריפו הזה. **v0.1.0** כבר GitHub Release חתום ב-GPG.
-רישום חי ב-`registry.terraform.io` עדיין דורש לחיצת **Publish** ב-HashiCorp
-ל-namespace `homecloudlab`. ראו [`PUBLISHING.md`](PUBLISHING.md).
+חי: [`registry.terraform.io/providers/homecloudlab/homecloud`](https://registry.terraform.io/providers/homecloudlab/homecloud/latest).
+תגיות `v*` חדשות נחתמות ב-GPG. ראו [`PUBLISHING.md`](PUBLISHING.md).
