@@ -93,7 +93,9 @@ provider "homecloud" {
 }
 ```
 
-Environment: `HC_ACCESS_KEY_ID`, `HC_SECRET_ACCESS_KEY`, `HC_APEX`, optional `HC_ACCOUNT_ID` / `HC_ENDPOINT`.
+Environment: optional `HC_ACCESS_KEY_ID` / `HC_SECRET_ACCESS_KEY` (override).
+Local default is `~/.homecloud/credentials` after `homecloud configure`.
+Optional: `HC_PROFILE`, `HC_APEX`, `HC_ACCOUNT_ID`, `HC_ENDPOINT`.
 
 GitHub Actions can skip long-lived keys: set `HC_ROLE_ARN` with
 `permissions: id-token: write`. The provider exchanges the JWT at

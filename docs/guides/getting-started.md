@@ -19,13 +19,21 @@ Repo: [`terraform-provider-homecloud`](https://github.com/HomeCloudLab/terraform
 
 ## Auth
 
-Create a **User-bound Access Key** in the console (IAM → Access keys). Put the
-secret in the environment — never in `.tf` files.
+Create a **User-bound Access Key** in the console (IAM → Access keys). Never
+put the secret in `.tf` files.
+
+On a laptop, `homecloud configure` once is enough: the provider reads the same
+`~/.homecloud/credentials` file as the CLI. Pick another account with
+`profile` or `HC_PROFILE`.
+
+In CI set `HC_ACCESS_KEY_ID` / `HC_SECRET_ACCESS_KEY`, or `HC_ROLE_ARN` (OIDC).
+If `HC_ROLE_ARN` is set, a leftover credentials file is ignored.
 
 | Variable | Meaning |
 |----------|---------|
-| `HC_ACCESS_KEY_ID` | Access Key ID |
+| `HC_ACCESS_KEY_ID` | Access Key ID (overrides the credentials file) |
 | `HC_SECRET_ACCESS_KEY` | Secret |
+| `HC_PROFILE` | Named profile in `~/.homecloud/credentials` |
 | `HC_APEX` | Platform apex (default `holab.abrdns.com`) |
 | `HC_ACCOUNT_ID` | Optional account UUID (default: whoami) |
 | `HC_ENDPOINT` | Optional console URL override (tests) |

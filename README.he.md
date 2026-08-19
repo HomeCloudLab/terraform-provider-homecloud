@@ -18,13 +18,20 @@ English: [docs/guides/getting-started.md](docs/guides/getting-started.md).
 
 ## אימות
 
-צרו **Access Key הקשור למשתמש** בקונסול (IAM → Access keys). את הסוד שימו
-במשתני סביבה — לא בקבצי `.tf`.
+צרו **Access Key הקשור למשתמש** בקונסול (IAM → Access keys). אל תשימו את הסוד
+בקבצי `.tf`.
+
+על הלפטופ מספיק `homecloud configure` פעם אחת: הספק קורא את אותו
+`~/.homecloud/credentials` כמו ה-CLI. חשבון אחר: `profile` או `HC_PROFILE`.
+
+ב-CI: `HC_ACCESS_KEY_ID` / `HC_SECRET_ACCESS_KEY`, או `HC_ROLE_ARN` (OIDC).
+אם `HC_ROLE_ARN` מוגדר, קובץ credentials שנשאר על ה-runner לא נקרא.
 
 | משתנה | משמעות |
 |--------|--------|
-| `HC_ACCESS_KEY_ID` | מזהה המפתח |
+| `HC_ACCESS_KEY_ID` | מזהה המפתח (גובר על קובץ ה-credentials) |
 | `HC_SECRET_ACCESS_KEY` | הסוד |
+| `HC_PROFILE` | פרופיל ב-`~/.homecloud/credentials` |
 | `HC_APEX` | Apex של הפלטפורמה (ברירת מחדל `holab.abrdns.com`) |
 | `HC_ACCOUNT_ID` | UUID חשבון אופציונלי (ברירת מחדל: whoami) |
 | `HC_ENDPOINT` | כתובת console חלופית (בדיקות) |

@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/homecloudlab/terraform-provider-homecloud/internal/client"
+	"github.com/homecloudlab/terraform-provider-homecloud/internal/credentials"
 )
 
 func New(version string) func() provider.Provider {
@@ -31,6 +32,7 @@ type providerModel struct {
 	RoleARN          types.String `tfsdk:"role_arn"`
 	WebIdentityToken types.String `tfsdk:"web_identity_token"`
 	OIDCAudience     types.String `tfsdk:"oidc_audience"`
+	Profile          types.String `tfsdk:"profile"`
 	Apex             types.String `tfsdk:"apex"`
 	Endpoint         types.String `tfsdk:"endpoint"`
 	AccountID        types.String `tfsdk:"account_id"`
@@ -66,6 +68,10 @@ func (p *homecloudProvider) Schema(_ context.Context, _ provider.SchemaRequest, 
 			"account_id": schema.StringAttribute{
 				Optional:            true,
 				MarkdownDescription: "Account UUID. Default from Access Key whoami. Env: `HC_ACCOUNT_ID`.",
+			},
+			"profile": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Named profile in `~/.homecloud/credentials` (same file as `homecloud configure`). Env: `HC_PROFILE` / `HOMECLOUD_PROFILE`. Ignored when Access Keys are set in HCL/env, and when `role_arn` is set (OIDC).",
 			},
 			"session_token": schema.StringAttribute{
 				Optional:            true,
@@ -110,10 +116,27 @@ func (p *homecloudProvider) Configure(ctx context.Context, req provider.Configur
 	sessionToken := firstNonEmpty(config.SessionToken.ValueString(), os.Getenv("HC_SESSION_TOKEN"))
 	roleARN := firstNonEmpty(config.RoleARN.ValueString(), os.Getenv("HC_ROLE_ARN"))
 	webToken := firstNonEmpty(config.WebIdentityToken.ValueString(), os.Getenv("HC_WEB_IDENTITY_TOKEN"))
-	apex := firstNonEmpty(config.Apex.ValueString(), os.Getenv("HC_APEX"), "holab.abrdns.com")
+	apex := firstNonEmpty(config.Apex.ValueString(), os.Getenv("HC_APEX"), os.Getenv("HOMECLOUD_APEX"))
 	endpoint := firstNonEmpty(config.Endpoint.ValueString(), os.Getenv("HC_ENDPOINT"))
-	accountID := firstNonEmpty(config.AccountID.ValueString(), os.Getenv("HC_ACCOUNT_ID"))
+	accountID := firstNonEmpty(config.AccountID.ValueString(), os.Getenv("HC_ACCOUNT_ID"), os.Getenv("HOMECLOUD_ACCOUNT_ID"))
 	audience := firstNonEmpty(config.OIDCAudience.ValueString(), os.Getenv("HC_OIDC_AUDIENCE"))
+
+	chain, err := credentials.ApplyFileFallback(credentials.Chain{
+		AccessKey: accessKey,
+		SecretKey: secretKey,
+		RoleARN:   roleARN,
+		Apex:      apex,
+		AccountID: accountID,
+		Profile:   config.Profile.ValueString(),
+	})
+	if err != nil {
+		resp.Diagnostics.AddError("Missing HomeCloud credentials", err.Error())
+		return
+	}
+	accessKey = chain.AccessKey
+	secretKey = chain.SecretKey
+	apex = firstNonEmpty(chain.Apex, "holab.abrdns.com")
+	accountID = chain.AccountID
 
 	if endpoint == "" {
 		endpoint = "https://console." + apex
@@ -159,7 +182,7 @@ func (p *homecloudProvider) Configure(ctx context.Context, req provider.Configur
 	if c.AccessKeyID == "" || c.Secret == "" {
 		resp.Diagnostics.AddError(
 			"Missing HomeCloud credentials",
-			"Set access_key/secret_key (or HC_ACCESS_KEY_ID / HC_SECRET_ACCESS_KEY), or role_arn plus a GitHub OIDC token (HC_ROLE_ARN + HC_WEB_IDENTITY_TOKEN / GitHub Actions).",
+			"Set access_key/secret_key, HC_ACCESS_KEY_ID / HC_SECRET_ACCESS_KEY, run `homecloud configure` (~/.homecloud/credentials), or set role_arn / HC_ROLE_ARN for GitHub OIDC.",
 		)
 		return
 	}
